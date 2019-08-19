@@ -2,7 +2,7 @@
 HCP: Semi-supervised network decomposition by low-rank logistic regression
 """
 
-print __doc__
+print(__doc__)
 
 import os
 import os.path as op
@@ -10,7 +10,7 @@ import numpy as np
 import glob
 from scipy.linalg import norm
 import nibabel as nib
-from sklearn.grid_search import RandomizedSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
 from nilearn.input_data import NiftiMasker
@@ -40,6 +40,14 @@ nifti_masker.fit()
 mask_nvox = nifti_masker.mask_img_.get_data().sum()
 
 print('Loading data...')
+
+# MY WORK
+HT_mask_img = 'minimal.nii.gz'
+HT_nifti_masker = NiftiMasker(mask_img=HT_mask_img, smoothing_fwhm=False,
+                           standardize=False)
+HT_nifti_masker.fit()
+HT_mask_nvox = HT_nifti_masker.mask_img_.get_data().sum()
+joblib.dump(HT_mask_nvox, 'preload_HT_3mm')
 
 # ARCHI task
 X_task, labels = joblib.load('preload_HT_3mm')
@@ -71,6 +79,18 @@ AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
 AT_X = nifti_masker.transform(AT_niis)
 AT_X = StandardScaler().fit_transform(AT_X)
 print('done :)')
+
+
+#bg_img = nib.load(mask_img)
+#bg = bg_img.get_data()
+#act = bg.copy()
+#act[act < 6000] = 0
+
+#plt.imshow(bg[..., 10].T, origin='lower', interpolation = 'nearest', cmap = 'gray')
+#masked_act = np.ma.masked_equal(act, 0.)
+#plt.imshow(masked_act[..., 10].T, origin='lower', interpolation='nearest', cmap='hot')
+#plt.axis('off')
+#plt.show()
 
 ##############################################################################
 # define computation graph
@@ -1026,7 +1046,7 @@ for p in pkgs:
     n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
     if n_comp != n_hidden or lambda_param != lmbd:
         continue
-    print p
+    print(p)
     
     q = p.replace('W0', 'V1')
     comps = np.dot(np.load(q), np.load(p))
@@ -1045,7 +1065,7 @@ for p in pkgs:
     n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
     if n_comp != n_hidden or lambda_param != lmbd:
         continue
-    print p
+    print(p)
     
     cur_mat = np.load(p)
 
@@ -1080,7 +1100,7 @@ for n_comp in [20, 50, 100]:
     for target_lambda in lambs:
         pkgs = glob.glob(RES_NAME + '/*n_comp=%i*lambda=%.2f*dbg_prfs_other_ds_.npy' %
             (n_comp, target_lambda))
-        print pkgs
+        print(pkgs)
         dbg_prfs_other_ds_ = np.load(pkgs[0])
         cur_mean = np.mean(dbg_prfs_other_ds_[-1, 2, :])
         f1_mean_per_lambda.append(cur_mean)

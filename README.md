@@ -19,6 +19,8 @@ For questions and bug reports, please send me an e-mail at _danilobzdok[at]gmail
 
 1. Make sure that recent versions of the following packages are available:
 	- Python (version 2.7 or higher)
+	- Sklearn (e.g. `pip install sklearn`)
+	- Matplotlib e.g. `pip install matplotlib`)
 	- Numpy (e.g. `pip install numpy`)
 	- Theano (e.g. `pip install Theano`)
 	- Nilearn (e.g., `pip install nilearn`)
