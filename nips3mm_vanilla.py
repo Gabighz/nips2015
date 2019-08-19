@@ -2,7 +2,7 @@
 HCP: Semi-supervised network decomposition by low-rank logistic regression
 """
 
-print __doc__
+print(__doc__)
 
 import os
 import os.path as op

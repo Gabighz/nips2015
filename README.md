@@ -18,13 +18,15 @@ For questions and bug reports, please send me an e-mail at _danilobzdok[at]gmail
 ## Prerequisites
 
 1. Make sure that recent versions of the following packages are available:
-	- Python (version 2.7 or higher)
+	- Python (version 3.6 or higher)
 	- Sklearn (e.g. `pip install sklearn`)
 	- Matplotlib e.g. `pip install matplotlib`)
 	- Numpy (e.g. `pip install numpy`)
 	- Theano (e.g. `pip install Theano`)
 	- Nilearn (e.g., `pip install nilearn`)
 	- Nibabel (e.g., `pip install nibabel`)
+	
+	Alternatively, execute `pip install -r requirements.txt`
 
 2. Set `floatX = float32` in the `[global]` section of Theano config (usually `~/.theanorc`). Alternatively you could prepend `THEANO_FLAGS=floatX=float32 ` to the python commands. 
 

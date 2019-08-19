@@ -2,7 +2,7 @@
 HCP: Semi-supervised network decomposition by low-rank logistic regression
 """
 
-print __doc__
+print(__doc__)
 
 import os
 import os.path as op
@@ -83,7 +83,7 @@ def make_new_noise(masker):
     n_random_foci = 200, 300  # random amount of foci per study
     fwhm_range = (4, 20)
 
-    print "Inventing NOISE images from Gaussians..."
+    print("Inventing NOISE images from Gaussians...")
     # generate some noise niftis
     inds = np.where(masker.mask_img_.get_data())  # grid of locations
     x_inds, y_inds, z_inds = inds  # unpack tuple
@@ -1068,7 +1068,7 @@ for p in pkgs:
         continue
     if n_comp != n_hidden:
         continue
-    print p
+    print(p)
         
     new_fname = 'comps_n=%i_lambda=%.2f_th0.0' % (n_hidden, lambda_param)
     comps = np.load(p)
@@ -1081,7 +1081,7 @@ for p in pkgs:
     n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
     if n_comp != n_hidden:
         continue
-    print p
+    print(p)
     
     cur_mat = np.load(p)
 
@@ -1117,7 +1117,7 @@ for n_comp in [20]: # [5, 20, 50, 100]:
     for target_lambda in lambs:
         pkgs = glob.glob(op.join(RES_NAME, '*n_comp=%i*lambda=%.2f*dbg_prfs_other_ds_.npy' %
             (n_comp, target_lambda)))
-        print pkgs
+        print(pkgs)
         dbg_prfs_other_ds_ = np.load(pkgs[0])
         cur_mean = np.mean(dbg_prfs_other_ds_[-1, 2, :])
         f1_mean_per_lambda.append(cur_mean)
