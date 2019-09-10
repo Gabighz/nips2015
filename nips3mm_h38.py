@@ -11,7 +11,7 @@ import glob
 from scipy.linalg import norm
 import nibabel as nib
 from matplotlib import pylab as plt
-from sklearn.grid_search import RandomizedSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
 from nilearn.input_data import NiftiMasker
