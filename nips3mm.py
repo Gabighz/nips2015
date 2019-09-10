@@ -1,9 +1,6 @@
 """
 HCP: Semi-supervised network decomposition by low-rank logistic regression
 """
-
-print(__doc__)
-
 import os
 import os.path as op
 import numpy as np
@@ -19,10 +16,12 @@ from sklearn.metrics import confusion_matrix
 import theano
 import theano.tensor as T
 from matplotlib import pylab as plt
-print('Running THEANO on %s' % theano.config.device)
 from nilearn.image import concat_imgs
 import joblib
 import time
+
+print('Running THEANO on %s' % theano.config.device)
+print(__doc__)
 
 RES_NAME = 'nips3mm'
 WRITE_DIR = op.join(os.getcwd(), RES_NAME)

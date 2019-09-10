@@ -17,23 +17,16 @@ For questions and bug reports, please send me an e-mail at _danilobzdok[at]gmail
 
 ## Prerequisites
 
-1. Make sure that recent versions of the following packages are available:
-	- Python (version 3.6 or higher)
-	- Sklearn (e.g. `pip install sklearn`)
-	- Matplotlib e.g. `pip install matplotlib`)
-	- Numpy (e.g. `pip install numpy`)
-	- Theano (e.g. `pip install Theano`)
-	- Nilearn (e.g., `pip install nilearn`)
-	- Nibabel (e.g., `pip install nibabel`)
-	
-	Alternatively, execute `pip install -r requirements.txt`
+1. Development setup from a directory above this repository's clone, assuming a clean installation:
+    ```
+    sudo apt install python3 python3-dev python3-pip virtualenv
+    virtualenv -p python3 nips2015/
+    cd nips2015
+    source bin/activate
+    pip install -r requirements.txt
+    ```
 
 2. Set `floatX = float32` in the `[global]` section of Theano config (usually `~/.theanorc`). Alternatively you could prepend `THEANO_FLAGS=floatX=float32 ` to the python commands. 
-
-3. Clone this repository, e.g.:
-```sh
-git clone https://github.com/banilo/nips2015.git
-```
 
 
 
