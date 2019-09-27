@@ -57,7 +57,8 @@ behavioral = pd.read_csv(stats_path, sep=",")
 #
 
 # ARCHI task
-X_task, labels = fmri_masked, behavioral['Value']
+# Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
+X_task, labels = fmri_masked, behavioral['Value'] 
 
 labels = np.int32(labels)
 
