@@ -19,6 +19,7 @@ from matplotlib import pylab as plt
 from nilearn.image import concat_imgs
 import joblib
 import time
+import pandas as pd
 
 print('Running THEANO on %s' % theano.config.device)
 print(__doc__)
@@ -40,16 +41,23 @@ mask_nvox = nifti_masker.mask_img_.get_data().sum()
 
 print('Loading data...')
 
-# MY WORK
-HT_mask_img = 'minimal.nii.gz'
-HT_nifti_masker = NiftiMasker(mask_img=HT_mask_img, smoothing_fwhm=False,
-                           standardize=False)
-HT_nifti_masker.fit()
-HT_mask_nvox = HT_nifti_masker.mask_img_.get_data().sum()
-joblib.dump(HT_mask_nvox, 'preload_HT_3mm')
+#
+# MY WORK (@Gabighz) to replace the 'preload_HT_3mm' dump
+#
+task_img = '/media/localhost/HDD/HCP data/100307/T1w/Results/tfMRI_GAMBLING_LR/PhaseOne_gdc_dc.nii.gz'
+stats_path = '/media/localhost/HDD/HCP data/100307/MNINonLinear/Results/tfMRI_GAMBLING_LR/EVs/GAMBLING_Stats.csv'
+
+fmri_masked = nifti_masker.fit_transform(task_img)
+
+# Load behavioral information
+behavioral = pd.read_csv(stats_path, sep=",")
+
+#
+## END @Gabighz
+#
 
 # ARCHI task
-X_task, labels = joblib.load('preload_HT_3mm')
+X_task, labels = fmri_masked, behavioral['Value']
 
 labels = np.int32(labels)
 
