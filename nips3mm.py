@@ -80,9 +80,11 @@ X_task = StandardScaler().fit_transform(X_task)
 X_rest = StandardScaler().fit_transform(X_rest)
 
 # ARCHI task
-AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
-AT_X = nifti_masker.transform(AT_niis)
-AT_X = StandardScaler().fit_transform(AT_X)
+# Commented out by @Gabighz as recommended
+# NOTE: Might be needed in the fit(...) function
+#AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
+#AT_X = nifti_masker.transform(AT_niis)
+#AT_X = StandardScaler().fit_transform(AT_X)
 print('done :)')
 
 
