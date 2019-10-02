@@ -42,16 +42,12 @@ mask_nvox = nifti_masker.mask_img_.get_data().sum()
 print('Loading data...')
 
 #
-# @Gabighz - to replace the 'preload_HT_3mm' dump
+# @Gabighz - Modified to load locally available data
 #
 task_img = '/media/localhost/HDD/HCP Gambling task/100307/T1w/Results/tfMRI_GAMBLING_LR/PhaseOne_gdc_dc.nii.gz'
-stats_path = '/media/localhost/HDD/HCP data/100307/MNINonLinear/Results/tfMRI_GAMBLING_LR/EVs/GAMBLING_Stats.csv'
+rest_img = '/media/localhost/HDD/Resting state/100307/T1w/Results/rfMRI_REST1_RL/PhaseOne_gdc_dc.nii.gz'
 
 fmri_masked = nifti_masker.fit_transform(task_img)
-
-#
-## END @Gabighz
-#
 
 # ARCHI task
 # Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
@@ -66,13 +62,14 @@ X_task = X_task[new_inds]
 labels = labels[new_inds]
 # subs = subs[new_inds]
 
-# rest
-# X_rest = nifti_masker.transform('preload_HR20persub_10mm_ero2.nii')
+# Resting state data
+# Modified by @Gabighz
+X_rest = nifti_masker.transform(rest_img)
 # X_rest = nifti_masker.transform('dump_rs_spca_s12_tmp')
-rs_spca_data = joblib.load('dump_rs_spca_s12_tmp')
+rs_spca_data = nib.load(rest_img)
 rs_spca_niis = nib.Nifti1Image(rs_spca_data,
                                nifti_masker.mask_img_.get_affine())
-X_rest = nifti_masker.transform(rs_spca_niis)
+#X_rest = nifti_masker.transform(rs_spca_niis)
 del rs_spca_niis
 del rs_spca_data
 
@@ -146,7 +143,7 @@ class SSEncoder(BaseEstimator):
         
     def test_performance_in_other_dataset(self):
         from sklearn.linear_model import LogisticRegression
-        from sklearn.cross_validation import StratifiedShuffleSplit
+        from sklearn.model_selection import StratifiedShuffleSplit
 
         compr_matrix = self.W0s.get_value().T  # currently best compression
         AT_X_compr = np.dot(compr_matrix, AT_X.T).T
@@ -192,8 +189,11 @@ class SSEncoder(BaseEstimator):
                 value=np.int32(y), name='y_train_s')
             lr_train_samples = len(X_task)
         else:
-            from sklearn.cross_validation import StratifiedShuffleSplit
-            folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
+            from sklearn.model_selection import StratifiedShuffleSplit
+            # @Gabighz
+            # Was: folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
+            # Reason of change: "TypeError: __init__() got an unexpected keyword argument 'n_iter'"
+            folder = StratifiedShuffleSplit(n_splits=10, test_size=0.20)
             new_trains, inds_val = iter(folder).next()
             X_train, X_val = X_task[new_trains], X_task[inds_val]
             y_train, y_val = y[new_trains], y[inds_val]
