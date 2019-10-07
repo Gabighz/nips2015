@@ -44,14 +44,14 @@ print('Loading data...')
 #
 # @Gabighz - Modified to load locally available data
 #
-task_img = '/media/localhost/HDD/HCP Gambling task/100307/T1w/Results/tfMRI_GAMBLING_LR/PhaseOne_gdc_dc.nii.gz'
-rest_img = '/media/localhost/HDD/Resting state/100307/T1w/Results/rfMRI_REST1_RL/PhaseOne_gdc_dc.nii.gz'
+task_img = 'task.nii.gz'
+rest_img = 'rest.nii.gz'
 
 fmri_masked = nifti_masker.fit_transform(task_img)
 
 # ARCHI task
 # Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
-X_task, labels = fmri_masked, [-1, 0, 1] # has to be one-dimensional with a size of 3 arbitrary integers
+X_task, labels = fmri_masked, # use the resting-state dictionaries directly instead of training the linear autoencoder on resting-state data
 
 labels = np.int32(labels)
 
@@ -189,11 +189,11 @@ class SSEncoder(BaseEstimator):
                 value=np.int32(y), name='y_train_s')
             lr_train_samples = len(X_task)
         else:
-            from sklearn.model_selection import StratifiedShuffleSplit
+            from sklearn.cross_validation import StratifiedShuffleSplit
             # @Gabighz
             # Was: folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
             # Reason of change: "TypeError: __init__() got an unexpected keyword argument 'n_iter'"
-            folder = StratifiedShuffleSplit(n_splits=10, test_size=0.20)
+            folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
             new_trains, inds_val = iter(folder).next()
             X_train, X_val = X_task[new_trains], X_task[inds_val]
             y_train, y_val = y[new_trains], y[inds_val]

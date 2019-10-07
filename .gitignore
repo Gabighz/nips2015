@@ -129,3 +129,8 @@ dmypy.json
 bin/
 include/
 lib64
+local/
+share/
+
+# HCP data
+*.nii.gz
