@@ -25,15 +25,7 @@ For questions and bug reports, please send me an e-mail at _danilobzdok[at]gmail
     virtualenv -p python2 nips2015/
     cd nips2015/
     source bin/activate
-    pip install scikit-learn==0.18
-    pip install numpy
-    pip install scipy
-    pip install nibabel
-    pip install nilearn
-    pip install theano
-    pip install matplotlib
-    pip install joblib
-    pip install pandas
+    pip install scikit-learn==0.18 numpy scipy nibabel nilearn theano matplotlib joblib pandas
     ```
 
 2. Set `floatX = float32` in the `[global]` section of Theano config (usually `~/.theanorc`). Alternatively you could prepend `THEANO_FLAGS=floatX=float32 ` to the python commands. 
