@@ -43,6 +43,8 @@ print('Loading data...')
 
 #
 # @Gabighz - Modified to load locally available data
+# downloaded from the HCP S500 Release Subjects (as part of WU-Minn HCP Data - 1200 Subjects),
+# Gambling Task fMRI Preprocessed and Resting State fMRI FIX-Denoised (Compact)
 #
 task_img = 'task.nii.gz'
 rest_img = 'rest.nii.gz'
@@ -78,7 +80,7 @@ X_rest = StandardScaler().fit_transform(X_rest)
 
 # ARCHI task
 # Commented out by @Gabighz as recommended
-# NOTE: Might be needed in the fit(...) function
+# NOTE: Used to test out-of-dataset performance
 #AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
 #AT_X = nifti_masker.transform(AT_niis)
 #AT_X = StandardScaler().fit_transform(AT_X)
