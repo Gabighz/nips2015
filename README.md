@@ -20,12 +20,17 @@ For questions and bug reports, please send me an e-mail at _danilobzdok[at]gmail
 1. Development setup from a directory above this repository's clone, assuming a clean installation in Ubuntu:
 
     ```
-    sudo apt install python-dev
-    sudo apt install python-tk
-    virtualenv -p python2 nips2015/
+    sudo apt install python3-dev
+    sudo apt install python3-tk
+    sudo apt install virtualenv
+    virtualenv nips2015 -p python3
     cd nips2015/
     source bin/activate
-    pip install scikit-learn==0.18 numpy scipy nibabel nilearn theano matplotlib joblib pandas
+    pip install scikit-learn numpy scipy nibabel nilearn theano matplotlib joblib pandas
+    cd cogspaces
+    pip install -r requirements.txt
+    python setup.py install
+    cd ..
     ```
 
 2. Set `floatX = float32` in the `[global]` section of Theano config (usually `~/.theanorc`). Alternatively you could prepend `THEANO_FLAGS=floatX=float32 ` to the python commands. 

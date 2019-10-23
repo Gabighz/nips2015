@@ -20,6 +20,8 @@ from nilearn.image import concat_imgs
 import joblib
 import time
 import pandas as pd
+from cogspaces.datasets import fetch_atlas_modl
+
 
 print('Running THEANO on %s' % theano.config.device)
 print(__doc__)
