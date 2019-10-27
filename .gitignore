@@ -126,6 +126,7 @@ dmypy.json
 
 # IDE config files
 .idea
+.vscode
 
 # Virtualenv config
 bin/
@@ -133,6 +134,3 @@ include/
 lib64
 local/
 share/
-
-# HCP data
-*.nii.gz
