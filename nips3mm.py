@@ -47,7 +47,7 @@ print('Loading data...')
 # @Gabighz - Modified to load locally available data
 # downloaded from the HCP S500 Release Subjects (as part of WU-Minn HCP Data - 1200 Subjects),
 # Gambling Task fMRI Preprocessed and Resting State fMRI FIX-Denoised (Compact)
-#
+# At the moment using only subject 100307
 task_img = 'task.nii.gz'
 rest_img = 'rest.nii.gz'
 
@@ -55,7 +55,7 @@ fmri_masked = nifti_masker.fit_transform(task_img)
 
 # ARCHI task
 # Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
-X_task, labels = fmri_masked, # use the resting-state dictionaries directly instead of training the linear autoencoder on resting-state data
+X_task, labels = fmri_masked, # an array of integers for labels? 
 
 labels = np.int32(labels)
 
@@ -67,6 +67,7 @@ labels = labels[new_inds]
 # subs = subs[new_inds]
 
 # Resting state data
+# use the resting-state dictionaries directly instead of training the linear autoencoder on resting-state data
 # Modified by @Gabighz
 X_rest = nifti_masker.transform(rest_img)
 # X_rest = nifti_masker.transform('dump_rs_spca_s12_tmp')
