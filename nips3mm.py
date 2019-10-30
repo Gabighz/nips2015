@@ -21,7 +21,7 @@ import joblib
 import time
 import pandas as pd
 from cogspaces.datasets import fetch_atlas_modl
-
+from sklearn.model_selection import StratifiedShuffleSplit
 
 print('Running THEANO on %s' % theano.config.device)
 print(__doc__)
@@ -46,16 +46,17 @@ print('Loading data...')
 #
 # @Gabighz - Modified to load locally available data
 # downloaded from the HCP S500 Release Subjects (as part of WU-Minn HCP Data - 1200 Subjects),
-# Gambling Task fMRI Preprocessed and Resting State fMRI FIX-Denoised (Compact)
+# S900 Release Subjects
+# Gambling Task fMRI Preprocessed and Resting State fMRI 1 Preprocessed
 # At the moment using only subject 100307
 task_img = 'task.nii.gz'
-rest_img = 'rest.nii.gz'
+rest_img = 'rest-phaseOne.nii.gz'
 
 fmri_masked = nifti_masker.fit_transform(task_img)
 
 # ARCHI task
 # Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
-X_task, labels = fmri_masked, # an array of integers for labels? 
+X_task, labels = fmri_masked, np.zeros((3,), dtype=int) 
 
 labels = np.int32(labels)
 
@@ -194,14 +195,14 @@ class SSEncoder(BaseEstimator):
                 value=np.int32(y), name='y_train_s')
             lr_train_samples = len(X_task)
         else:
-            from sklearn.cross_validation import StratifiedShuffleSplit
-            # @Gabighz
-            # Was: folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
-            # Reason of change: "TypeError: __init__() got an unexpected keyword argument 'n_iter'"
-            folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
-            new_trains, inds_val = iter(folder).next()
-            X_train, X_val = X_task[new_trains], X_task[inds_val]
-            y_train, y_val = y[new_trains], y[inds_val]
+            # Modified by  @Gabighz
+            # folder = StratifiedShuffleSplit(y, n_splits=1, test_size=0.20)
+            folder = StratifiedShuffleSplit(n_splits=1, test_size=0.20)
+            #folder.split(np.zeros(len(y)), y)
+            #new_trains, inds_val = iter(folder).next()
+            for train_index, test_index in folder.split(X_task, y):
+                X_train, X_val = X_task[train_index], X_task[test_index]
+                y_train, y_val = y[train_index], y[test_index]
 
             X_train_s = theano.shared(value=np.float32(X_train),
                                       name='X_train_s', borrow=False)
@@ -323,7 +324,7 @@ class SSEncoder(BaseEstimator):
             (np.float32(1) - self.lambda_param) * self.ae_cost +
             self.lambda_param * self.lr_cost
         )
-        combined_updates = self.RMSprop(
+        np.combined_updates = self.RMSprop(
             cost=self.combined_cost,
             params=combined_params,
             lr=self.learning_rate)
@@ -336,7 +337,7 @@ class SSEncoder(BaseEstimator):
             [index],
             [self.combined_cost, self.ae_cost, self.lr_cost],
             givens=givens_combined,
-            updates=combined_updates, allow_input_downcast=True)
+            updates=np.combined_updates, allow_input_downcast=True)
 
         # optimization loop
         start_time = time.time()
