@@ -83,7 +83,6 @@ X_task = StandardScaler().fit_transform(X_task)
 X_rest = StandardScaler().fit_transform(X_rest)
 
 # ARCHI task
-# Commented out by @Gabighz as recommended
 # NOTE: Used to test out-of-dataset performance
 #AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
 #AT_X = nifti_masker.transform(AT_niis)
@@ -342,7 +341,14 @@ class SSEncoder(BaseEstimator):
         # optimization loop
         start_time = time.time()
         ae_last_cost = np.inf
+        # Modified by @Gabighz
+        # ae_cur_cost, lr_cur_cost, and combined_cost used to be referenced before assignment
+        # in lines 'if ae_last_cost - ae_cur_cost < 0.1:',
+        # 'lr_last_cost = lr_cur_cost', and 'self.dbg_combined_cost_.append(combined_cost)'
+        ae_cur_cost = np.inf
+        lr_cur_cost = np.inf
         lr_last_cost = np.inf
+        combined_cost = np.inf
         no_improve_steps = 0
         acc_train, acc_val = 0., 0.
         for i_epoch in range(self.max_epochs):
@@ -398,10 +404,10 @@ class SSEncoder(BaseEstimator):
                 self.dbg_prfs_.append(prfs_val)
 
                 # test out-of-dataset performance
-                od_acc, prfs_other = self.test_performance_in_other_dataset()
-                self.dbg_acc_other_ds_.append(od_acc)
-                self.dbg_prfs_other_ds_.append(prfs_other)
-                print('out-of-dataset acc: %.2f' % od_acc)
+               # od_acc, prfs_other = self.test_performance_in_other_dataset()
+               # self.dbg_acc_other_ds_.append(od_acc)
+               # self.dbg_prfs_other_ds_.append(prfs_other)
+               # print('out-of-dataset acc: %.2f' % od_acc)
                 
             # save paramters from last 100 iterations
             if i_epoch > (self.max_epochs - 100):
@@ -533,7 +539,10 @@ for n_comp in n_comps:
         np.save(cur_path + 'V1comps', V1_mat)
         # dump_comps(nifti_masker, fname, comps, threshold=0.5)
 
-STOP_CALCULATION
+# Modified by @Gabighz
+# Commented out the line below since it was throwing a
+# variable undefined error:
+# STOP_CALCULATION
 
 # equally scaled plots
 import re
@@ -553,7 +562,7 @@ n_comps = [20]
 
 path_vanilla = 'nips3mm_vanilla'
 
-for k, v in d.iteritems():
+for k, v in d.items():
     pkgs = glob.glob(RES_NAME + v)
     for n_comp in n_comps:
         plt.figure()
@@ -587,11 +596,13 @@ for k, v in d.iteritems():
                 label=cur_label)
         if k == 'training accuracy' or k == 'accuracy val':
             van_pkgs = glob.glob(path_vanilla + v)
-            vanilla_values = np.load(van_pkgs[0])
-            plt.plot(
-                dbg_epochs_,
-                vanilla_values,
-                label='LR')
+            # Modified by @Gabighz
+            # Commented the lines below until I can figure out what they do
+            #vanilla_values = np.load(van_pkgs[0])
+            #plt.plot(
+             #   dbg_epochs_,
+              #  vanilla_values,
+               # label='LR')
         plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
         plt.legend(loc='lower right', fontsize=9)
         plt.yticks(np.linspace(0., 1., 11))
