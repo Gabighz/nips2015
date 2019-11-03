@@ -22,6 +22,7 @@ import time
 import pandas as pd
 from cogspaces.datasets import fetch_atlas_modl
 from sklearn.model_selection import StratifiedShuffleSplit
+from nilearn import datasets
 
 print('Running THEANO on %s' % theano.config.device)
 print(__doc__)
@@ -34,6 +35,10 @@ if not op.exists(WRITE_DIR):
 ##############################################################################
 # load+preprocess data
 ##############################################################################
+
+# to get background images when plotting
+localizer_dataset = datasets.fetch_localizer_button_task()
+localizer_anat_file = localizer_dataset.anat
 
 mask_img = 'grey10_icbm_3mm_bin.nii.gz'
 nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=False,
@@ -458,7 +463,7 @@ def dump_comps(masker, compressor, components, threshold=2, fwhm=None,
     from nilearn.image import smooth_img
     from scipy.stats import scoreatpercentile
 
-    if isinstance(compressor, basestring):
+    if isinstance(compressor, str):
         comp_name = compressor
     else:
         comp_name = compressor.__str__().split('(')[0]
@@ -483,14 +488,14 @@ def dump_comps(masker, compressor, components, threshold=2, fwhm=None,
         nii_z = masker.inverse_transform(comp_z)
         gz_path = path_mask + '_zmap.nii.gz'
         nii_z.to_filename(gz_path)
-        plot_stat_map(gz_path, bg_img='colin.nii', threshold=cur_thresh,
+        plot_stat_map(gz_path, bg_img=localizer_anat_file, threshold=cur_thresh,
                       cut_coords=(0, -2, 0), draw_cross=False,
                       output_file=path_mask + 'zmap.png')
                       
         # optional: do smoothing
         if fwhm is not None:
             nii_z_fwhm = smooth_img(nii_z, fwhm=fwhm)
-            plot_stat_map(nii_z_fwhm, bg_img='colin.nii', threshold=cur_thresh,
+            plot_stat_map(nii_z_fwhm, bg_img=localizer_anat_file, threshold=cur_thresh,
                           cut_coords=(0, -2, 0), draw_cross=False,
                           output_file=path_mask +
                           ('zmap_%imm.png' % fwhm))
@@ -590,10 +595,12 @@ for k, v in d.items():
             cur_label += '/'
             cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
             cur_label += '' if '_AE' in p else '/LR only!'
-            plt.plot(
-                dbg_epochs_,
-                dbg_acc_train_,
-                label=cur_label)
+            # @ Modified by @Gabighz
+            # Commented out the lines below
+            #plt.plot(
+                #dbg_epochs_,
+                #dbg_acc_train_,
+               # label=cur_label)
         if k == 'training accuracy' or k == 'accuracy val':
             van_pkgs = glob.glob(path_vanilla + v)
             # Modified by @Gabighz
@@ -638,10 +645,12 @@ for n_comp in n_comps:  #
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        plt.plot(
-            dbg_epochs_,
-            dbg_acc_val_,
-            label=cur_label)
+        # @ Modified by Gabighz
+        # Commented out lines below
+        #plt.plot(
+           # dbg_epochs_,
+           # dbg_acc_val_,
+           # label=cur_label)
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
     plt.legend(loc='lower right', fontsize=9)
     plt.yticks(np.linspace(0., 1., 11))
@@ -675,10 +684,12 @@ for n_comp in n_comps:  #
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        plt.plot(
-            dbg_epochs_,
-            dbg_acc_other_ds_,
-            label=cur_label)
+        # Modified by @Gabighz
+        # Commented out lines below
+        #plt.plot(
+            #dbg_epochs_,
+            #dbg_acc_other_ds_,
+            #label=cur_label)
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
     plt.legend(loc='lower right', fontsize=9)
     plt.yticks(np.linspace(0., 1., 11))
@@ -823,11 +834,12 @@ for n_comp in n_comps:
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        for i in np.arange(18):
-            plt.plot(
-                dbg_epochs_,
-                np.array(dbg_prfs_)[:, 0, i],
-                label='task %i' % (i + 1))
+      # @Gabighz - commented out the lines below
+      #  for i in np.arange(18):
+        #     plt.plot(
+        #         dbg_epochs_,
+        #         np.array(dbg_prfs_)[:, 0, i],
+       #         label='task %i' % (i + 1))
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
               target_lambda)
     plt.legend(loc='lower right', fontsize=9)
@@ -865,11 +877,12 @@ for n_comp in n_comps:
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        for i in np.arange(18):
-            plt.plot(
-                dbg_epochs_,
-                np.array(dbg_prfs_)[:, 1, i],
-                label='task %i' % (i + 1))
+       # @Gabighz - commented out
+       # for i in np.arange(18):
+       #     plt.plot(
+       #         dbg_epochs_,
+       #         np.array(dbg_prfs_)[:, 1, i],
+       #         label='task %i' % (i + 1))
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
               target_lambda)
     plt.legend(loc='lower right', fontsize=9)
@@ -906,11 +919,12 @@ for n_comp in n_comps:
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        for i in np.arange(18):
-            plt.plot(
-                dbg_epochs_,
-                np.array(dbg_prfs_)[:, 2, i],
-                label='task %i' % (i + 1))
+       # @Gabighz - commented out
+       # for i in np.arange(18):
+       #     plt.plot(
+       #         dbg_epochs_,
+       #         np.array(dbg_prfs_)[:, 2, i],
+       #         label='task %i' % (i + 1))
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
               target_lambda)
     plt.legend(loc='lower right', fontsize=9)
@@ -947,11 +961,12 @@ for n_comp in n_comps:
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        for i in np.arange(18):
-            plt.plot(
-                dbg_epochs_,
-                np.array(dbg_prfs_other_ds_)[:, 0, i],
-                label='task %i' % (i + 1))
+       # @Gabighz - commented out
+       # for i in np.arange(18):
+       #     plt.plot(
+       #         dbg_epochs_,
+       #         np.array(dbg_prfs_other_ds_)[:, 0, i],
+       #         label='task %i' % (i + 1))
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
               target_lambda)
     plt.legend(loc='lower right', fontsize=9)
@@ -988,11 +1003,12 @@ for n_comp in n_comps:
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        for i in np.arange(18):
-            plt.plot(
-                dbg_epochs_,
-                np.array(dbg_prfs_other_ds_)[:, 1, i],
-                label='task %i' % (i + 1))
+       # @Gabighz - commented out
+       # for i in np.arange(18):
+       #     plt.plot(
+       #         dbg_epochs_,
+       #         np.array(dbg_prfs_other_ds_)[:, 1, i],
+       #         label='task %i' % (i + 1))
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
               target_lambda)
     plt.legend(loc='lower right', fontsize=9)
@@ -1029,11 +1045,12 @@ for n_comp in n_comps:
             cur_label += 'RSpca20'
         cur_label += '/'
         cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-        for i in np.arange(18):
-            plt.plot(
-                dbg_epochs_,
-                np.array(dbg_prfs_other_ds_)[:, 2, i],
-                label='task %i' % (i + 1))
+       # @Gabighz - commented out
+       # for i in np.arange(18):
+       #     plt.plot(
+       #         dbg_epochs_,
+       #         np.array(dbg_prfs_other_ds_)[:, 2, i],
+       #         label='task %i' % (i + 1))
     plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
               target_lambda)
     plt.legend(loc='lower right', fontsize=9)
@@ -1125,12 +1142,13 @@ for n_comp in [20, 50, 100]:
         pkgs = glob.glob(RES_NAME + '/*n_comp=%i*lambda=%.2f*dbg_prfs_other_ds_.npy' %
             (n_comp, target_lambda))
         print(pkgs)
-        dbg_prfs_other_ds_ = np.load(pkgs[0])
-        cur_mean = np.mean(dbg_prfs_other_ds_[-1, 2, :])
-        f1_mean_per_lambda.append(cur_mean)
-        cur_std = np.std(dbg_prfs_other_ds_[-1, 2, :])
-        f1_std_per_lambda.append(cur_std)
-        print('F1 means: %.2f +/- %.2f (SD)' % (cur_mean, cur_std))
+       # @Gabighz - commented out
+       # dbg_prfs_other_ds_ = np.load(pkgs[0])
+       # cur_mean = np.mean(dbg_prfs_other_ds_[-1, 2, :])
+       # f1_mean_per_lambda.append(cur_mean)
+       # cur_std = np.std(dbg_prfs_other_ds_[-1, 2, :])
+       # f1_std_per_lambda.append(cur_std)
+       # print('F1 means: %.2f +/- %.2f (SD)' % (cur_mean, cur_std))
 
     f1_mean_per_lambda = np.array(f1_mean_per_lambda)
     f1_std_per_lambda = np.array(f1_std_per_lambda)
@@ -1142,8 +1160,9 @@ for n_comp in [20, 50, 100]:
         #(7., 136., 217.), (7., 40., 164.), (1., 4., 64.)]
         (7., 176., 242.), (7., 136., 217.), (7., 40., 164.), (1., 4., 64.)]
     my_colors = [(x/256, y/256, z/256) for x, y, z in colors]
-    plt.bar(ind, f1_mean_per_lambda, yerr=f1_std_per_lambda,
-            width=width, color=my_colors)
+   # @Gabighz - commented out
+   # plt.bar(ind, f1_mean_per_lambda, yerr=f1_std_per_lambda,
+   #         width=width, color=my_colors)
     plt.ylabel('mean F1 score (+/- SD)')
     plt.title('out-of-dataset performance\n'
               '%i components' % n_comp)
