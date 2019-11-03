@@ -134,3 +134,8 @@ include/
 lib64
 local/
 share/
+
+# Neuroimagining data
+*.nii
+*.nii.gz
+nips3mm/
