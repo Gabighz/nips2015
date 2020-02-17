@@ -27,10 +27,8 @@ For questions and bug reports, please send me an e-mail at _danilobzdok[at]gmail
     cd nips2015/
     source bin/activate
     pip install scikit-learn numpy scipy nibabel nilearn theano matplotlib joblib pandas
-    cd cogspaces
-    pip install -r requirements.txt
-    python setup.py install
-    cd ..
+    python download_data.py
+    python nips3mm.py
     ```
 
 2. Set `floatX = float32` in the `[global]` section of Theano config (usually `~/.theanorc`). Alternatively you could prepend `THEANO_FLAGS=floatX=float32 ` to the python commands, e.g. `THEANO_FLAGS=floatX=float32 python nips3mm.py` 
