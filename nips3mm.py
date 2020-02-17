@@ -44,7 +44,7 @@ mask_img = 'grey10_icbm_3mm_bin.nii.gz'
 nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=False,
                            standardize=False)
 nifti_masker.fit()
-mask_nvox = nifti_masker.mask_img_.get_data().sum()
+mask_nvox = nifti_masker.mask_img_.get_fdata().sum()
 
 print('Loading data...')
 
@@ -79,7 +79,7 @@ X_rest = nifti_masker.transform(rest_img)
 # X_rest = nifti_masker.transform('dump_rs_spca_s12_tmp')
 rs_spca_data = nib.load(rest_img)
 rs_spca_niis = nib.Nifti1Image(rs_spca_data,
-                               nifti_masker.mask_img_.get_affine())
+                               nifti_masker.mask_img_.affine)
 #X_rest = nifti_masker.transform(rs_spca_niis)
 del rs_spca_niis
 del rs_spca_data
