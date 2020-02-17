@@ -41,7 +41,7 @@ localizer_dataset = datasets.fetch_localizer_button_task()
 localizer_anat_file = localizer_dataset.anat
 
 mask_img = 'grey10_icbm_3mm_bin.nii.gz'
-nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=False,
+nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=None,
                            standardize=False)
 nifti_masker.fit()
 mask_nvox = nifti_masker.mask_img_.get_fdata().sum()
@@ -133,15 +133,15 @@ class SSEncoder(BaseEstimator):
     from theano.tensor.shared_randomstreams import RandomStreams
 
     def RMSprop(self, cost, params, lr=0.001, rho=0.9, epsilon=1e-6):
-        grads = T.grad(cost=cost, wrt=params)
+        gradients = T.grad(cost=cost, wrt=params)
         updates = []
-        for p, g in zip(params, grads):
-            acc = theano.shared(p.get_value() * 0.)
-            acc_new = rho * acc + (1 - rho) * g ** 2
+        for param, gradient in zip(params, gradients):
+            acc = theano.shared(param.get_value() * 0.)
+            acc_new = rho * acc + (1 - rho) * gradient ** 2
             gradient_scaling = T.sqrt(acc_new + epsilon)
-            g = g / gradient_scaling
+            gradient = gradient / gradient_scaling
             updates.append((acc, acc_new))
-            updates.append((p, p - lr * g))
+            updates.append((param, param - lr * gradient))
         return updates
         
     def get_param_pool(self):
@@ -555,7 +555,7 @@ pkgs = glob.glob(RES_NAME + '/*dbg_epochs*.npy')
 dbg_epochs_ = np.load(pkgs[0])
 dbg_epochs_ = np.load(pkgs[0])
 
-d = {
+data = {
     'training accuracy': '/*dbg_acc_train*.npy',
     'accuracy val': '/*dbg_acc_val_*.npy',
     'accuracy other ds': '/*dbg_acc_other_ds_*.npy',
@@ -567,84 +567,84 @@ n_comps = [20]
 
 path_vanilla = 'nips3mm_vanilla'
 
-for k, v in d.items():
-    pkgs = glob.glob(RES_NAME + v)
+for key, value in data.items():
+    pkgs = glob.glob(RES_NAME + value)
     for n_comp in n_comps:
         plt.figure()
-        for p in pkgs:
-            lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-            # n_hidden = int(re.search('comp=(?P<comp>.{1,2,3})_', p).group('comp'))
-            n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+        for package in pkgs:
+            lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+            # n_hidden = int(re.search('comp=(?P<comp>.{1,2,3})_', package).group('comp'))
+            n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
             if n_comp != n_hidden:
                 continue
             
-            dbg_acc_train_ = np.load(p)
+            dbg_acc_train_ = np.load(package)
             
             cur_label = 'n_comp=%i' % n_hidden
             cur_label += '/'
             cur_label += 'lambda=%.2f' % lambda_param
             cur_label += '/'
-            if not '_AE' in p:
+            if not '_AE' in package:
                 cur_label += 'LR only!'
-            elif 'subRS' in p:
+            elif 'subRS' in package:
                 cur_label += 'RSnormal'
-            elif 'spca20RS' in p:
+            elif 'spca20RS' in package:
                 cur_label += 'RSspca20'
-            elif 'pca20RS' in p:
+            elif 'pca20RS' in package:
                 cur_label += 'RSpca20'
             cur_label += '/'
-            cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
-            cur_label += '' if '_AE' in p else '/LR only!'
+            cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+            cur_label += '' if '_AE' in package else '/LR only!'
             # @ Modified by @Gabighz
             # Commented out the lines below
             #plt.plot(
-                #dbg_epochs_,
-                #dbg_acc_train_,
-               # label=cur_label)
-        if k == 'training accuracy' or k == 'accuracy val':
-            van_pkgs = glob.glob(path_vanilla + v)
+            #    dbg_epochs_,
+            #    dbg_acc_train_,
+            #    label=cur_label)
+        if key == 'training accuracy' or key == 'accuracy val':
+            van_pkgs = glob.glob(path_vanilla + value)
             # Modified by @Gabighz
             # Commented the lines below until I can figure out what they do
             #vanilla_values = np.load(van_pkgs[0])
             #plt.plot(
-             #   dbg_epochs_,
-              #  vanilla_values,
-               # label='LR')
+            #   dbg_epochs_,
+            #   vanilla_values,
+            #   label='LR')
         plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
         plt.legend(loc='lower right', fontsize=9)
         plt.yticks(np.linspace(0., 1., 11))
-        plt.ylabel(k)
+        plt.ylabel(key)
         plt.xlabel('epochs')
         plt.ylim(0., 1.05)
         plt.grid(True)
         plt.show()
         plt.savefig(op.join(WRITE_DIR,
-                    k.replace(' ', '_') + '_%icomps.png' % n_comp))
+                    key.replace(' ', '_') + '_%icomps.png' % n_comp))
 
 pkgs = glob.glob(RES_NAME + '/*dbg_acc_val_*.npy')
 for n_comp in n_comps:  # 
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        # n_hidden = int(re.search('comp=(?P<comp>.{1,2,3})_', p).group('comp'))
-        n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        # n_hidden = int(re.search('comp=(?P<comp>.{1,2,3})_', package).group('comp'))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
         if n_comp != n_hidden:
             continue
         
-        dbg_acc_val_ = np.load(p)
+        dbg_acc_val_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
         # @ Modified by Gabighz
         # Commented out lines below
         #plt.plot(
@@ -664,26 +664,26 @@ for n_comp in n_comps:  #
 pkgs = glob.glob(RES_NAME + '/*dbg_acc_other_ds_*.npy')
 for n_comp in n_comps:  # 
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
         if n_comp != n_hidden:
             continue
         
-        dbg_acc_other_ds_ = np.load(p)
+        dbg_acc_other_ds_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
         # Modified by @Gabighz
         # Commented out lines below
         #plt.plot(
@@ -703,26 +703,26 @@ for n_comp in n_comps:  #
 pkgs = glob.glob(RES_NAME + '/*dbg_ae_cost_*.npy')
 for n_comp in n_comps:  # AE
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
         if n_comp != n_hidden:
             continue
         
-        dbg_ae_cost_ = np.load(p)
+        dbg_ae_cost_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
         plt.plot(
             dbg_epochs_,
             dbg_ae_cost_,
@@ -739,26 +739,26 @@ for n_comp in n_comps:  # AE
 pkgs = glob.glob(RES_NAME + '/*dbg_lr_cost_*.npy')  # LR cost
 for n_comp in n_comps:  # AE
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
         if n_comp != n_hidden:
             continue
         
-        dbg_lr_cost_ = np.load(p)
+        dbg_lr_cost_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
         plt.plot(
             dbg_epochs_,
             dbg_lr_cost_,
@@ -775,26 +775,26 @@ for n_comp in n_comps:  # AE
 pkgs = glob.glob(RES_NAME + '/*dbg_combined_cost_*.npy')  # combined loss
 for n_comp in n_comps:  # AE
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
         if n_comp != n_hidden:
             continue
         
-        dbg_combined_cost_ = np.load(p)
+        dbg_combined_cost_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
         plt.plot(
             dbg_epochs_,
             dbg_combined_cost_,
@@ -814,26 +814,26 @@ target_lambda = 0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
 for n_comp in n_comps:
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', p).group('comp'))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
         if n_comp != n_hidden:
             continue
         
-        dbg_prfs_ = np.load(p)
+        dbg_prfs_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
       # @Gabighz - commented out the lines below
       #  for i in np.arange(18):
         #     plt.plot(
@@ -856,27 +856,27 @@ for n_comp in n_comps:
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
 for n_comp in n_comps:
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', p).group('comp'))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
         if n_comp != n_hidden:
             continue
         
-        dbg_prfs_ = np.load(p)
+        dbg_prfs_ = np.load(package)
         
-        dbg_prfs_ = np.load(p)
+        dbg_prfs_ = np.load(package)
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
        # @Gabighz - commented out
        # for i in np.arange(18):
        #     plt.plot(
@@ -899,26 +899,26 @@ for n_comp in n_comps:
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
 for n_comp in n_comps:
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', p).group('comp'))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
         if n_comp != n_hidden:
             continue
             
-        dbg_prfs_ = np.load(p)
+        dbg_prfs_ = np.load(package)
             
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
        # @Gabighz - commented out
        # for i in np.arange(18):
        #     plt.plot(
@@ -941,26 +941,26 @@ for n_comp in n_comps:
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
 for n_comp in n_comps:
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', p).group('comp'))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
         if n_comp != n_hidden:
             continue
             
-        dbg_prfs_other_ds_ = np.load(p)
+        dbg_prfs_other_ds_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
        # @Gabighz - commented out
        # for i in np.arange(18):
        #     plt.plot(
@@ -983,26 +983,26 @@ for n_comp in n_comps:
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
 for n_comp in n_comps:
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', p).group('comp'))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
         if n_comp != n_hidden:
             continue
             
-        dbg_prfs_other_ds_ = np.load(p)
+        dbg_prfs_other_ds_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
        # @Gabighz - commented out
        # for i in np.arange(18):
        #     plt.plot(
@@ -1025,26 +1025,26 @@ for n_comp in n_comps:
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
 for n_comp in n_comps:
     plt.figure()
-    for p in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', p).group('comp'))
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
         if n_comp != n_hidden:
             continue
             
-        dbg_prfs_other_ds_ = np.load(p)
+        dbg_prfs_other_ds_ = np.load(package)
 
         cur_label = 'n_comp=%i' % n_hidden
         cur_label += '/'
         cur_label += 'lambda=%.2f' % lambda_param
         cur_label += '/'
-        if not '_AE' in p:
+        if not '_AE' in package:
             cur_label += 'LR only!'
-        elif 'subRS' in p:
+        elif 'subRS' in package:
             cur_label += 'RSnormal'
-        elif 'pca20RS' in p:
+        elif 'pca20RS' in package:
             cur_label += 'RSpca20'
         cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in p else 'joint decomp.'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
        # @Gabighz - commented out
        # for i in np.arange(18):
        #     plt.plot(
@@ -1068,29 +1068,32 @@ from nilearn.image import smooth_img
 n_comp = 20
 lmbd = 0.25
 pkgs = glob.glob(RES_NAME + '/*W0comps.npy')
-for p in pkgs:
-    lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-    n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+for package in pkgs:
+    lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+    n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
     if n_comp != n_hidden or lambda_param != lmbd:
         continue
         
     new_fname = 'comps_n=%i_lambda=%.2f_th0.0' % (n_hidden, lambda_param)
-    comps = np.load(p)
+    comps = np.load(package)
     dump_comps(nifti_masker, new_fname, comps, threshold=0.0)
 
 # print class weights
 pkgs = glob.glob(RES_NAME + '/*W0comps.npy')
 n_comp = 20
 lmbd = 0.5
-for p in pkgs:
-    lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-    n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+for package in pkgs:
+    lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+    n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
     if n_comp != n_hidden or lambda_param != lmbd:
         continue
-    print(p)
+    print(package)
     
-    q = p.replace('W0', 'V1')
-    comps = np.dot(np.load(q), np.load(p))
+    # @Gabighz
+    # NOTE: variable was previously named 'q'
+    # assumed to represent a queue
+    queue = package.replace('W0', 'V1')
+    comps = np.dot(np.load(queue), np.load(package))
         
     new_fname = 'comps_n=%i_lambda=%.2f' % (n_hidden, lambda_param)
     dump_comps(nifti_masker, new_fname, comps, threshold=0.0, fwhm=None,
@@ -1101,15 +1104,17 @@ for p in pkgs:
 n_comp = 20
 lmbd = 0.5
 pkgs = glob.glob(RES_NAME + '/*V1comps.npy')
-for p in pkgs:
-    lambda_param = np.float(re.search('lambda=(.{4})', p).group(1))
-    n_hidden = int(re.search('comp=(.{1,3})_', p).group(1))
+for package in pkgs:
+    lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+    n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
     if n_comp != n_hidden or lambda_param != lmbd:
         continue
-    print(p)
+    print(package)
     
-    cur_mat = np.load(p)
+    cur_mat = np.load(package)
 
+    # @Gabighz
+    # NOTE: what is fs?
     if n_comp == 20:
         fs = (8, 6)
     elif n_comp == 100:
