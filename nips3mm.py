@@ -500,6 +500,62 @@ def dump_comps(masker, compressor, components, threshold=2, fwhm=None,
                           output_file=path_mask +
                           ('zmap_%imm.png' % fwhm))
 
+def plot_values(pkgs, filename_to_write, what_is_this):
+
+    """
+    Added by @Gabighz
+
+    Function that plots values from dbg
+    NOTE: see what exactly is dbg
+
+    Parameters
+    ----------
+    pkgs : 
+        Packages that contain ??
+    filename_to_write: str
+        The name of the file that we will write the results to
+    what_is_this : str
+        The name of the y-axis
+    """
+
+    for n_comp in n_comps: # AE
+        plt.figure()
+        for package in pkgs:
+            lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+            n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
+            if n_comp != n_hidden:
+                continue
+            
+            dbg_of_current_pkgs = np.load(package)
+
+            cur_label = 'n_comp=%i' % n_hidden
+            cur_label += '/'
+            cur_label += 'lambda=%.2f' % lambda_param
+            cur_label += '/'
+            if not '_AE' in package:
+                cur_label += 'LR only!'
+            elif 'subRS' in package:
+                cur_label += 'RSnormal'
+            elif 'pca20RS' in package:
+                cur_label += 'RSpca20'
+            cur_label += '/'
+            cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+            # Modified by @Gabighz
+            # Commented out lines below
+            #plt.plot(
+                #dbg_epochs_,
+                #dbg_of_current_pkgs,
+                #label=cur_label)
+            plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
+            plt.legend(loc='lower right', fontsize=9)
+            plt.yticks(np.linspace(0., 1., 11))
+            plt.ylabel(what_is_this)
+            plt.ylim(0., 1.05)
+            plt.xlabel('epochs')
+            plt.grid(True)
+            plt.show()
+            plt.savefig(op.join(WRITE_DIR, filename_to_write % n_comp))
+
 n_comps = [20]
 # n_comps = [40, 30, 20, 10, 5]
 for n_comp in n_comps:
@@ -622,191 +678,19 @@ for key, value in data.items():
                     key.replace(' ', '_') + '_%icomps.png' % n_comp))
 
 pkgs = glob.glob(RES_NAME + '/*dbg_acc_val_*.npy')
-for n_comp in n_comps:  # 
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        # n_hidden = int(re.search('comp=(?P<comp>.{1,2,3})_', package).group('comp'))
-        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
-        if n_comp != n_hidden:
-            continue
-        
-        dbg_acc_val_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-        # @ Modified by Gabighz
-        # Commented out lines below
-        #plt.plot(
-           # dbg_epochs_,
-           # dbg_acc_val_,
-           # label=cur_label)
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
-    plt.legend(loc='lower right', fontsize=9)
-    plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('validation set accuracy')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'accuracy_val_%icomps.png' % n_comp))
+plot_values(pkgs, 'accuracy_val_%icomps.png', 'validation set accuracy')
 
 pkgs = glob.glob(RES_NAME + '/*dbg_acc_other_ds_*.npy')
-for n_comp in n_comps:  # 
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
-        if n_comp != n_hidden:
-            continue
-        
-        dbg_acc_other_ds_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-        # Modified by @Gabighz
-        # Commented out lines below
-        #plt.plot(
-            #dbg_epochs_,
-            #dbg_acc_other_ds_,
-            #label=cur_label)
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
-    plt.legend(loc='lower right', fontsize=9)
-    plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('ARCHI dataset accuracy')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'accuracy_archi_%icomps.png' % n_comp))
+plot_values(pkgs, 'accuracy_archi_%icomps.png', 'ARCHI dataset accuracy')
 
 pkgs = glob.glob(RES_NAME + '/*dbg_ae_cost_*.npy')
-for n_comp in n_comps:  # AE
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
-        if n_comp != n_hidden:
-            continue
-        
-        dbg_ae_cost_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-        plt.plot(
-            dbg_epochs_,
-            dbg_ae_cost_,
-            label=cur_label)
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('AE loss')
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'loss_ae_%icomps.png' % n_comp))
+plot_values(pkgs, 'loss_ae_%icomps.png', 'AE loss')
 
 pkgs = glob.glob(RES_NAME + '/*dbg_lr_cost_*.npy')  # LR cost
-for n_comp in n_comps:  # AE
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
-        if n_comp != n_hidden:
-            continue
-        
-        dbg_lr_cost_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-        plt.plot(
-            dbg_epochs_,
-            dbg_lr_cost_,
-            label=cur_label)
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('LR loss')
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'loss_lr_%icomps.png' % n_comp))
+plot_values(pkgs, 'loss_lr_%icomps.png', 'LR loss')
 
 pkgs = glob.glob(RES_NAME + '/*dbg_combined_cost_*.npy')  # combined loss
-for n_comp in n_comps:  # AE
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
-        if n_comp != n_hidden:
-            continue
-        
-        dbg_combined_cost_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-        plt.plot(
-            dbg_epochs_,
-            dbg_combined_cost_,
-            label=cur_label)
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('combined loss')
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'loss_combined_%icomps.png' % n_comp))
+plot_values(pkgs, 'loss_combined_%icomps.png', 'combined loss')
 
 # precision / recall / f1
 target_lambda = 0.5
