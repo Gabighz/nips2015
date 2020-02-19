@@ -17,6 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from nilearn.input_data import NiftiMasker
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import confusion_matrix
+os.environ["THEANO_FLAGS"] = "floatX=float32"
 import theano
 import theano.tensor as T
 print('Running THEANO on %s' % theano.config.device)

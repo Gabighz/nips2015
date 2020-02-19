@@ -28,10 +28,10 @@ For questions and bug reports, please send me an e-mail at _danilobzdok[at]gmail
     source bin/activate
     pip install scikit-learn numpy scipy nibabel nilearn theano matplotlib joblib pandas
     python download_data.py
-    THEANO_FLAGS=floatX=float32 python nips3mm.py
+    python nips3mm.py
     ```
 
-2. Set `floatX = float32` in the `[global]` section of Theano config (usually `~/.theanorc`). Alternatively you could prepend `THEANO_FLAGS=floatX=float32 ` to the python commands, e.g. `THEANO_FLAGS=floatX=float32 python nips3mm.py` 
+    Now the files are ready to be executed!
 
 
 

@@ -16,6 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from nilearn.input_data import NiftiMasker
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import confusion_matrix
+os.environ["THEANO_FLAGS"] = "floatX=float32"
 import theano
 import theano.tensor as T
 from matplotlib import pylab as plt
@@ -39,8 +40,13 @@ nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=False,
 nifti_masker.fit()
 mask_nvox = nifti_masker.mask_img_.get_data().sum()
 
+task_img = 'task.nii.gz'
+rest_img = 'rest-phaseOne.nii.gz'
+
+fmri_masked = nifti_masker.fit_transform(task_img)
+
 print('Loading data...')
-X_task, labels = joblib.load('preload_HT_3mm')
+X_task, labels = fmri_masked, np.zeros((3,), dtype=int) 
 
 labels = np.int32(labels)
 
@@ -50,11 +56,11 @@ np.random.shuffle(new_inds)
 X_task = X_task[new_inds]
 y = labels[new_inds]
 
-from sklearn.cross_validation import StratifiedShuffleSplit
-folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.50)
-new_devs, inds_val = iter(folder).next()
-X_dev, X_val = X_task[new_devs], X_task[inds_val]
-y_dev, y_val = y[new_devs], y[inds_val]
+from sklearn.model_selection import StratifiedShuffleSplit
+folder = StratifiedShuffleSplit(n_splits=1, test_size=0.50)
+for train_index, test_index in folder.split(X_task, y):
+    X_dev, X_val = X_task[train_index], X_task[test_index]
+    y_dev, y_val = y[train_index], y[test_index]
 
 del X_task
 

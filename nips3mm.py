@@ -13,6 +13,7 @@ from sklearn.preprocessing import StandardScaler
 from nilearn.input_data import NiftiMasker
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import confusion_matrix
+os.environ["THEANO_FLAGS"] = "floatX=float32"
 import theano
 import theano.tensor as T
 from matplotlib import pylab as plt
@@ -77,7 +78,7 @@ labels = labels[new_inds]
 # Modified by @Gabighz
 X_rest = nifti_masker.transform(rest_img)
 # X_rest = nifti_masker.transform('dump_rs_spca_s12_tmp')
-rs_spca_data = nib.load(rest_img)
+rs_spca_data = nib.load(rest_img) # was: joblib.load('dump_rs_spca_s12_tmp')
 rs_spca_niis = nib.Nifti1Image(rs_spca_data,
                                nifti_masker.mask_img_.affine)
 #X_rest = nifti_masker.transform(rs_spca_niis)
@@ -87,7 +88,7 @@ del rs_spca_data
 X_task = StandardScaler().fit_transform(X_task)
 X_rest = StandardScaler().fit_transform(X_rest)
 
-# ARCHI task
+# ARCHI Task
 # NOTE: Used to test out-of-dataset performance
 #AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
 #AT_X = nifti_masker.transform(AT_niis)
