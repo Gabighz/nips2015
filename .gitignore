@@ -139,3 +139,4 @@ share/
 *.nii
 *.nii.gz
 nips3mm/
+nips3mm_serial/

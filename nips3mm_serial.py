@@ -57,7 +57,10 @@ X_task = X_task[new_inds]
 y = labels[new_inds]
 
 from sklearn.model_selection import StratifiedShuffleSplit
+
 folder = StratifiedShuffleSplit(n_splits=1, test_size=0.50)
+SPLITS = folder.get_n_splits(X_task, y)
+
 for train_index, test_index in folder.split(X_task, y):
     X_dev, X_val = X_task[train_index], X_task[test_index]
     y_dev, y_val = y[train_index], y[test_index]
@@ -278,12 +281,11 @@ class SEncoder(BaseEstimator):
                 value=np.int32(y), name='y_train_s')
             lr_train_samples = len(X_task)
         else:
-            from sklearn.cross_validation import StratifiedShuffleSplit
-            folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
-            new_trains, inds_val = iter(folder).next()
-            X_train, X_val = X_task[new_trains], X_task[inds_val]
-            y_train, y_val = y[new_trains], y[inds_val]
-
+            from sklearn.model_selection import StratifiedShuffleSplit
+            folder = StratifiedShuffleSplit(n_splits=1, test_size=0.20)
+            for train_index, test_index in folder.split(X_task, y):
+                X_train, X_val = X_task[train_index], X_task[test_index]
+                y_train, y_val = y[train_index], y[test_index]
             X_train_s = theano.shared(value=np.float32(X_train),
                                       name='X_train_s', borrow=False)
             y_train_s = theano.shared(value=np.int32(y_train),
@@ -345,6 +347,10 @@ class SEncoder(BaseEstimator):
         # optimization loop
         start_time = time.time()
         lr_last_cost = np.inf
+        # @Gabighz
+        # NOTE: Added line below because lr_cur_cost was referenced before assignment
+        # in 'if lr_last_cost - lr_cur_cost < 0.1'
+        lr_cur_cost = np.inf
         ae_cur_cost = np.inf
         no_improve_steps = 0
         acc_train, acc_val = 0., 0.
@@ -523,7 +529,10 @@ for n_comp in n_comps:
     # 2-step approach 4: PCA + LR
     from sklearn.decomposition import PCA
     print('Compressing by whitened PCA...')
-    compressor = PCA(n_components=n_comp, whiten=True)
+    # @Gabighz
+    # NOTE: changed n_components from n_comp to 1 due to error
+    # to be fixed
+    compressor = PCA(n_components=1, whiten=True)
     compressor.fit(X_dev)
 
     half2compr = compressor.transform(X_val)
