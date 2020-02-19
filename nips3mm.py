@@ -556,6 +556,68 @@ def plot_values(pkgs, filename_to_write, what_is_this):
             plt.show()
             plt.savefig(op.join(WRITE_DIR, filename_to_write % n_comp))
 
+def plot_values_with_lambda(pkgs, filename_to_write, what_is_this, array_position_dbg, target_lambda):
+
+    """
+    Added by @Gabighz
+
+    Function that plots values from dbg, but with a target lambda
+    NOTE: see what exactly is dbg
+
+    Parameters
+    ----------
+    pkgs : 
+        Packages that contain ??
+    filename_to_write: str
+        The name of the file that we will write the results to
+    what_is_this : str
+        The name of the y-axis
+    array_position_dbg: int
+        The column of an array that contains ??
+    target_lambda: int
+        ???
+    """
+
+    for n_comp in n_comps:
+        plt.figure()
+        for package in pkgs:
+            lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+            n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
+            if n_comp != n_hidden:
+                continue
+            
+            dbg_prfs_ = np.load(package)
+
+            cur_label = 'n_comp=%i' % n_hidden
+            cur_label += '/'
+            cur_label += 'lambda=%.2f' % lambda_param
+            cur_label += '/'
+            if not '_AE' in package:
+                cur_label += 'LR only!'
+            elif 'subRS' in package:
+                cur_label += 'RSnormal'
+            elif 'pca20RS' in package:
+                cur_label += 'RSpca20'
+            cur_label += '/'
+            cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+        # @Gabighz - commented out the lines below
+        #  for i in np.arange(18):
+            #     plt.plot(
+            #         dbg_epochs_,
+            #         np.array(dbg_prfs_)[:, array_position,dbg, i],
+        #         label='task %i' % (i + 1))
+        plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
+                target_lambda)
+        plt.legend(loc='lower right', fontsize=9)
+        # plt.yticks(np.linspace(0., 1., 11))
+        plt.ylabel(what_is_this)
+        plt.ylim(0., 1.05)
+        plt.xlabel('epochs')
+        plt.grid(True)
+        plt.show()
+        plt.savefig(op.join(WRITE_DIR, filename_to_write + '_lambda=%0.2f_%icomps.png' %
+                    (target_lambda, n_comp)))
+
 n_comps = [20]
 # n_comps = [40, 30, 20, 10, 5]
 for n_comp in n_comps:
@@ -696,256 +758,27 @@ plot_values(pkgs, 'loss_combined_%icomps.png', 'combined loss')
 target_lambda = 0.5
 
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
-for n_comp in n_comps:
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
-        if n_comp != n_hidden:
-            continue
-        
-        dbg_prfs_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-      # @Gabighz - commented out the lines below
-      #  for i in np.arange(18):
-        #     plt.plot(
-        #         dbg_epochs_,
-        #         np.array(dbg_prfs_)[:, 0, i],
-       #         label='task %i' % (i + 1))
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
-              target_lambda)
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('in-dataset precisions')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'prec_inds_lambda=%0.2f_%icomps.png' %
-                (target_lambda, n_comp)))
+plot_values_with_lambda(pkgs, 'prec_ind', 'in-dataset precisions', 0, target_lambda)
 
 # in-dataset recall at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
-for n_comp in n_comps:
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
-        if n_comp != n_hidden:
-            continue
-        
-        dbg_prfs_ = np.load(package)
-        
-        dbg_prfs_ = np.load(package)
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-       # @Gabighz - commented out
-       # for i in np.arange(18):
-       #     plt.plot(
-       #         dbg_epochs_,
-       #         np.array(dbg_prfs_)[:, 1, i],
-       #         label='task %i' % (i + 1))
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
-              target_lambda)
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('in-dataset recall')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'rec_inds_lambda=%0.2f_%icomps.png' %
-                (target_lambda, n_comp)))
+plot_values_with_lambda(pkgs, 'rec_ind', 'in-dataset recall', 1, target_lambda)
 
 # in-dataset f1 at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
-for n_comp in n_comps:
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
-        if n_comp != n_hidden:
-            continue
-            
-        dbg_prfs_ = np.load(package)
-            
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-       # @Gabighz - commented out
-       # for i in np.arange(18):
-       #     plt.plot(
-       #         dbg_epochs_,
-       #         np.array(dbg_prfs_)[:, 2, i],
-       #         label='task %i' % (i + 1))
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
-              target_lambda)
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('in-dataset f1 score')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'f1_inds_lambda=%0.2f_%icomps.png' %
-                (target_lambda, n_comp)))
+plot_values_with_lambda(pkgs, 'f1_ind', 'in-dataset f1 score', 2, target_lambda)
 
 # out-of-dataset precision at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
-for n_comp in n_comps:
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
-        if n_comp != n_hidden:
-            continue
-            
-        dbg_prfs_other_ds_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-       # @Gabighz - commented out
-       # for i in np.arange(18):
-       #     plt.plot(
-       #         dbg_epochs_,
-       #         np.array(dbg_prfs_other_ds_)[:, 0, i],
-       #         label='task %i' % (i + 1))
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
-              target_lambda)
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('out-of-dataset precisions')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'prec_oods_lambda=%0.2f_%icomps.png' %
-                (target_lambda, n_comp)))
+plot_values_with_lambda(pkgs, 'prec_oods', 'out-of-dataset precisions', 0, target_lambda)
 
 # out-of-dataset recall at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
-for n_comp in n_comps:
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
-        if n_comp != n_hidden:
-            continue
-            
-        dbg_prfs_other_ds_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-       # @Gabighz - commented out
-       # for i in np.arange(18):
-       #     plt.plot(
-       #         dbg_epochs_,
-       #         np.array(dbg_prfs_other_ds_)[:, 1, i],
-       #         label='task %i' % (i + 1))
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
-              target_lambda)
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('out-of-dataset recall')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'rec_oods_lambda=%0.2f_%icomps.png' %
-                (target_lambda, n_comp)))
+plot_values_with_lambda(pkgs, 'rec_oods', 'out-of-dataset recall', 1, target_lambda)
 
 # out-of-dataset f1 at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
-for n_comp in n_comps:
-    plt.figure()
-    for package in pkgs:
-        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
-        if n_comp != n_hidden:
-            continue
-            
-        dbg_prfs_other_ds_ = np.load(package)
-
-        cur_label = 'n_comp=%i' % n_hidden
-        cur_label += '/'
-        cur_label += 'lambda=%.2f' % lambda_param
-        cur_label += '/'
-        if not '_AE' in package:
-            cur_label += 'LR only!'
-        elif 'subRS' in package:
-            cur_label += 'RSnormal'
-        elif 'pca20RS' in package:
-            cur_label += 'RSpca20'
-        cur_label += '/'
-        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-       # @Gabighz - commented out
-       # for i in np.arange(18):
-       #     plt.plot(
-       #         dbg_epochs_,
-       #         np.array(dbg_prfs_other_ds_)[:, 2, i],
-       #         label='task %i' % (i + 1))
-    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
-              target_lambda)
-    plt.legend(loc='lower right', fontsize=9)
-    # plt.yticks(np.linspace(0., 1., 11))
-    plt.ylabel('out-of-dataset f1 score')
-    plt.ylim(0., 1.05)
-    plt.xlabel('epochs')
-    plt.grid(True)
-    plt.show()
-    plt.savefig(op.join(WRITE_DIR, 'f1_oods_lambda=%0.2f_%icomps.png' %
-                (target_lambda, n_comp)))
+plot_values_with_lambda(pkgs, 'f1_oods', 'out-of-dataset f1 score', 2, target_lambda)
 
 # print network components (1st layer)
 from nilearn.image import smooth_img
