@@ -49,7 +49,6 @@ mask_nvox = nifti_masker.mask_img_.get_fdata().sum()
 
 print('Loading data...')
 
-#
 # @Gabighz - Modified to load locally available data
 # downloaded from the HCP S500 Release Subjects (as part of WU-Minn HCP Data - 1200 Subjects),
 # S900 Release Subjects
@@ -62,7 +61,12 @@ fmri_masked = nifti_masker.fit_transform(task_img)
 
 # ARCHI task
 # Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
-X_task, labels = fmri_masked, np.zeros((3,), dtype=int) 
+X_task = fmri_masked
+
+# @Gabighz
+# Taken from Gambling_Stats.cvs
+labels = np.array([0.4375, 0.5625, 0.0,0.5625,0.4375,0.0,304.0,298.0,289.0,330.0])
+
 
 labels = np.int32(labels)
 
@@ -576,9 +580,10 @@ def plot_values_with_lambda(pkgs, filename_to_write, what_is_this, array_positio
     array_position_dbg: int
         The column of an array that contains ??
     target_lambda: int
-        ???
+        The balance between autoencoder and logistic regression
     """
-
+    # We always have n_components = [20] since that achieves best performance
+    # but we can also have n = 5, 100 for the purpose of replicating the results
     for n_comp in n_comps:
         plt.figure()
         for package in pkgs:

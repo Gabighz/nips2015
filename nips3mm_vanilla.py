@@ -42,8 +42,19 @@ mask_nvox = nifti_masker.mask_img_.get_data().sum()
 
 print('Loading data...')
 
+# @Gabighz - Modified to load locally available data
+# downloaded from the HCP S500 Release Subjects (as part of WU-Minn HCP Data - 1200 Subjects),
+# S900 Release Subjects
+# Gambling Task fMRI Preprocessed and Resting State fMRI 1 Preprocessed
+# At the moment using only subject 100307
+task_img = 'task.nii.gz'
+rest_img = 'rest-phaseOne.nii.gz'
+
+fmri_masked = nifti_masker.fit_transform(task_img)
+
 # ARCHI task
-X_task, labels = joblib.load('preload_HT_3mm')
+# Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
+X_task, labels = fmri_masked, np.zeros((3,), dtype=int) 
 
 labels = np.int32(labels)
 
@@ -55,12 +66,6 @@ labels = labels[new_inds]
 # subs = subs[new_inds]
 
 X_task = StandardScaler().fit_transform(X_task)
-
-# ARCHI task
-AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
-AT_X = nifti_masker.transform(AT_niis)
-AT_X = StandardScaler().fit_transform(AT_X)
-print('done :)')
 
 ##############################################################################
 # define computation graph
@@ -125,11 +130,11 @@ class SSEncoder(BaseEstimator):
                 value=np.int32(y), name='y_train_s')
             lr_train_samples = len(X_task)
         else:
-            from sklearn.cross_validation import StratifiedShuffleSplit
-            folder = StratifiedShuffleSplit(y, n_iter=1, test_size=0.20)
-            new_trains, inds_val = iter(folder).next()
-            X_train, X_val = X_task[new_trains], X_task[inds_val]
-            y_train, y_val = y[new_trains], y[inds_val]
+            from sklearn.model_selection import StratifiedShuffleSplit
+            folder = StratifiedShuffleSplit(n_splits=1, test_size=0.20)
+            for train_index, test_index in folder.split(X_task, y):
+                X_train, X_val = X_task[train_index], X_task[test_index]
+                y_train, y_val = y[train_index], y[test_index]
 
             X_train_s = theano.shared(value=np.float32(X_train),
                                       name='X_train_s', borrow=False)
@@ -193,6 +198,7 @@ class SSEncoder(BaseEstimator):
         start_time = time.time()
         lr_last_cost = np.inf
         ae_cur_cost = np.inf
+        lr_cur_cost = np.inf
         no_improve_steps = 0
         acc_train, acc_val = 0., 0.
         for i_epoch in range(self.max_epochs):

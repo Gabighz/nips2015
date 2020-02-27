@@ -40,13 +40,17 @@ nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=False,
 nifti_masker.fit()
 mask_nvox = nifti_masker.mask_img_.get_data().sum()
 
-task_img = 'task.nii.gz'
+task_img = '100307/T1w/Results/tfMRI_GAMBLING_LR/PhaseOne_gdc_dc.nii.gz'
 rest_img = 'rest-phaseOne.nii.gz'
 
 fmri_masked = nifti_masker.fit_transform(task_img)
 
 print('Loading data...')
-X_task, labels = fmri_masked, np.zeros((3,), dtype=int) 
+X_task = fmri_masked
+
+# @Gabighz
+# Taken from Gambling_Stats.cvs
+labels = np.array([0.4375, 0.5625, 0.0,0.5625,0.4375,0.0,304.0,298.0,289.0,330.0])
 
 labels = np.int32(labels)
 
@@ -526,13 +530,13 @@ for n_comp in n_comps:
     # np.save(outpath + '_acc', acc_AE)
     # joblib.dump(estimator, outpath + '_est', compress=9)
 
-    # 2-step approach 4: PCA + LR
+    # 2-step approach 4: PCA + LogReg
     from sklearn.decomposition import PCA
     print('Compressing by whitened PCA...')
     # @Gabighz
     # NOTE: changed n_components from n_comp to 1 due to error
     # to be fixed
-    compressor = PCA(n_components=1, whiten=True)
+    compressor = PCA(n_components=5, whiten=True)
     compressor.fit(X_dev)
 
     half2compr = compressor.transform(X_val)
