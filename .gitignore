@@ -139,6 +139,7 @@ share/
 *.nii
 *.nii.gz
 nips3mm*/
+*.csv
 
 # Directories with neuroimaging data that was downloaded directly from ConnectomeDB
 100*

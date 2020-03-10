@@ -24,6 +24,7 @@ print('Running THEANO on %s' % theano.config.device)
 from nilearn.image import concat_imgs
 import joblib
 import time
+import pandas as pd
 
 RES_NAME = 'nips3mm_serial'
 WRITE_DIR = op.join(os.getcwd(), RES_NAME)
@@ -34,25 +35,40 @@ if not op.exists(WRITE_DIR):
 # load+preprocess data
 ##############################################################################
 
-mask_img = 'grey10_icbm_3mm_bin.nii.gz'
-nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=False,
+mask_img = 'goodvoxmask_hcp.nii.gz'
+nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=None,
                            standardize=False)
 nifti_masker.fit()
-mask_nvox = nifti_masker.mask_img_.get_data().sum()
+mask_nvox = nifti_masker.mask_img_.get_fdata().sum()
 
-task_img = '100307/T1w/Results/tfMRI_GAMBLING_LR/PhaseOne_gdc_dc.nii.gz'
-rest_img = 'rest-phaseOne.nii.gz'
+print('Loading data...')
+
+# @Gabighz - Modified to load locally available data
+# downloaded from the HCP S500 Release Subjects (as part of WU-Minn HCP Data - 1200 Subjects),
+# S900 Release Subjects
+# Gambling Task fMRI Preprocessed and Resting State fMRI 1 Preprocessed
+# At the moment using only subject 100307
+task_img = 'GAMBLING_masked_1.nii.gz'
 
 fmri_masked = nifti_masker.fit_transform(task_img)
 
-print('Loading data...')
+# ARCHI task
+# Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
 X_task = fmri_masked
 
 # @Gabighz
 # Taken from Gambling_Stats.cvs
-labels = np.array([0.4375, 0.5625, 0.0,0.5625,0.4375,0.0,304.0,298.0,289.0,330.0])
+meta_file = pd.read_csv('GAMBLING_meta.csv')
+
+labels = meta_file['Label']
+
+labels = [0 if label==-1 else label for label in labels]
 
 labels = np.int32(labels)
+
+print(labels)
+print(labels.shape)
+print(labels.dtype)
 
 # contrasts are IN ORDER -> shuffle!
 new_inds = np.arange(0, X_task.shape[0])
@@ -351,10 +367,6 @@ class SEncoder(BaseEstimator):
         # optimization loop
         start_time = time.time()
         lr_last_cost = np.inf
-        # @Gabighz
-        # NOTE: Added line below because lr_cur_cost was referenced before assignment
-        # in 'if lr_last_cost - lr_cur_cost < 0.1'
-        lr_cur_cost = np.inf
         ae_cur_cost = np.inf
         no_improve_steps = 0
         acc_train, acc_val = 0., 0.
@@ -533,10 +545,8 @@ for n_comp in n_comps:
     # 2-step approach 4: PCA + LogReg
     from sklearn.decomposition import PCA
     print('Compressing by whitened PCA...')
-    # @Gabighz
-    # NOTE: changed n_components from n_comp to 1 due to error
-    # to be fixed
-    compressor = PCA(n_components=5, whiten=True)
+
+    compressor = PCA(n_components=n_comp, whiten=True)
     compressor.fit(X_dev)
 
     half2compr = compressor.transform(X_val)
