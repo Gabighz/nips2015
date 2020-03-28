@@ -143,3 +143,6 @@ nips3mm*/
 
 # Directories with neuroimaging data that was downloaded directly from ConnectomeDB
 100*
+
+# Multi-study decoding models for task functional MRI data.
+cogspaces/

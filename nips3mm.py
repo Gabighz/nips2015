@@ -21,7 +21,7 @@ from nilearn.image import concat_imgs
 import joblib
 import time
 import pandas as pd
-#from cogspaces.datasets import fetch_atlas_modl
+from cogspaces.datasets import fetch_atlas_modl
 from sklearn.model_selection import StratifiedShuffleSplit
 from nilearn import datasets
 
@@ -37,11 +37,7 @@ if not op.exists(WRITE_DIR):
 # load+preprocess data
 ##############################################################################
 
-# to get background images when plotting
-localizer_dataset = datasets.fetch_localizer_button_task()
-localizer_anat_file = localizer_dataset.anat
-
-mask_img = 'grey10_icbm_3mm_bin.nii.gz'
+mask_img = 'goodvoxmask_hcp.nii.gz'
 nifti_masker = NiftiMasker(mask_img=mask_img, smoothing_fwhm=None,
                            standardize=False)
 nifti_masker.fit()
@@ -52,23 +48,29 @@ print('Loading data...')
 # @Gabighz - Modified to load locally available data
 # downloaded from the HCP S500 Release Subjects (as part of WU-Minn HCP Data - 1200 Subjects),
 # S900 Release Subjects
-# Gambling Task fMRI Preprocessed and Resting State fMRI 1 Preprocessed
-# At the moment using only subject 100307
-task_img = 'task.nii.gz'
-rest_img = 'rest-phaseOne.nii.gz'
-
-fmri_masked = nifti_masker.fit_transform(task_img)
+# Gambling Task fMRI Preprocessed and Cogspace resting-state dictionaries
+task_img = 'GAMBLING_masked_1.nii.gz'
+rest_img = 'components_128.nii.gz'
+ARCHI_out_of_dataset = 'GAMBLING_masked_2.nii.gz'
 
 # ARCHI task
 # Modified by @Gabighz: previously was X_task, labels = joblib.load('preload_HT_3mm')
-X_task = fmri_masked
+X_task = nifti_masker.fit_transform(task_img)
 
 # @Gabighz
 # Taken from Gambling_Stats.cvs
-labels = np.array([0.4375, 0.5625, 0.0,0.5625,0.4375,0.0,304.0,298.0,289.0,330.0])
+meta_file = pd.read_csv('GAMBLING_meta.csv', nrows=433)
 
+labels = meta_file['Label']
+
+AT_meta_file = pd.read_csv('GAMBLING_meta.csv', skiprows = (1, 433), nrows=348)
+AT_labels = AT_meta_file['Label']
+
+labels = [0 if label==-1 else label for label in labels]
+AT_labels = [0 if label==-1 else label for label in AT_labels]
 
 labels = np.int32(labels)
+AT_labels = np.int32(AT_labels)
 
 # contrasts are IN ORDER -> shuffle!
 new_inds = np.arange(0, X_task.shape[0])
@@ -78,7 +80,6 @@ labels = labels[new_inds]
 # subs = subs[new_inds]
 
 # Resting state data
-# use the resting-state dictionaries directly instead of training the linear autoencoder on resting-state data
 # Modified by @Gabighz
 X_rest = nifti_masker.transform(rest_img)
 # X_rest = nifti_masker.transform('dump_rs_spca_s12_tmp')
@@ -94,9 +95,10 @@ X_rest = StandardScaler().fit_transform(X_rest)
 
 # ARCHI Task
 # NOTE: Used to test out-of-dataset performance
-#AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
-#AT_X = nifti_masker.transform(AT_niis)
-#AT_X = StandardScaler().fit_transform(AT_X)
+# was AT_niis, AT_labels, AT_subs = joblib.load('preload_AT_3mm')
+AT_niis = nib.load(ARCHI_out_of_dataset)
+AT_X = nifti_masker.transform(AT_niis)
+AT_X = StandardScaler().fit_transform(AT_X)
 print('done :)')
 
 
@@ -162,13 +164,16 @@ class SSEncoder(BaseEstimator):
 
         compr_matrix = self.W0s.get_value().T  # currently best compression
         AT_X_compr = np.dot(compr_matrix, AT_X.T).T
-        clf = LogisticRegression(penalty='l1')
-        folder = StratifiedShuffleSplit(y=AT_labels, n_iter=5, test_size=0.2,
-                                        random_state=42)
+        clf = LogisticRegression(penalty='l2') #Modified: was penalty l1
+        # Modified
+        #folder = StratifiedShuffleSplit(y=AT_labels, n_iter=5, test_size=0.2,
+        #                                random_state=42)
+
+        folder = StratifiedShuffleSplit(n_splits=5, test_size=0.20, random_state=42)
 
         acc_list = []
         prfs_list = []
-        for (train_inds, test_inds) in folder:
+        for (train_inds, test_inds) in folder.split(AT_X_compr, AT_labels):
             clf.fit(AT_X_compr[train_inds, :], AT_labels[train_inds])
             pred_y = clf.predict(AT_X_compr[test_inds, :])
 
@@ -204,7 +209,7 @@ class SSEncoder(BaseEstimator):
                 value=np.int32(y), name='y_train_s')
             lr_train_samples = len(X_task)
         else:
-            # Modified by  @Gabighz
+            # Modified
             # folder = StratifiedShuffleSplit(y, n_splits=1, test_size=0.20)
             folder = StratifiedShuffleSplit(n_splits=1, test_size=0.20)
             #folder.split(np.zeros(len(y)), y)
@@ -351,7 +356,7 @@ class SSEncoder(BaseEstimator):
         # optimization loop
         start_time = time.time()
         ae_last_cost = np.inf
-        # Modified by @Gabighz
+        # Modified
         # ae_cur_cost, lr_cur_cost, and combined_cost used to be referenced before assignment
         # in lines 'if ae_last_cost - ae_cur_cost < 0.1:',
         # 'lr_last_cost = lr_cur_cost', and 'self.dbg_combined_cost_.append(combined_cost)'
@@ -414,10 +419,10 @@ class SSEncoder(BaseEstimator):
                 self.dbg_prfs_.append(prfs_val)
 
                 # test out-of-dataset performance
-               # od_acc, prfs_other = self.test_performance_in_other_dataset()
-               # self.dbg_acc_other_ds_.append(od_acc)
-               # self.dbg_prfs_other_ds_.append(prfs_other)
-               # print('out-of-dataset acc: %.2f' % od_acc)
+                od_acc, prfs_other = self.test_performance_in_other_dataset()
+                self.dbg_acc_other_ds_.append(od_acc)
+                self.dbg_prfs_other_ds_.append(prfs_other)
+                print('out-of-dataset acc: %.2f' % od_acc)
                 
             # save paramters from last 100 iterations
             if i_epoch > (self.max_epochs - 100):
@@ -450,7 +455,9 @@ class SSEncoder(BaseEstimator):
     def score(self, X, y, return_prfs=False):
         pred_y = self.predict(X)
         acc = np.mean(pred_y == y)
-        prfs = precision_recall_fscore_support(pred_y, y)
+        # @Gabighz
+        # Added zero_division parameter
+        prfs = precision_recall_fscore_support(pred_y, y, zero_division=1)
         if return_prfs:
             return acc, prfs
         else:
@@ -504,128 +511,8 @@ def dump_comps(masker, compressor, components, threshold=2, fwhm=None,
                           cut_coords=(0, -2, 0), draw_cross=False,
                           output_file=path_mask +
                           ('zmap_%imm.png' % fwhm))
-
-def plot_values(pkgs, filename_to_write, what_is_this):
-
-    """
-    Added by @Gabighz
-
-    Function that plots values from dbg
-    NOTE: see what exactly is dbg
-
-    Parameters
-    ----------
-    pkgs : 
-        Packages that contain ??
-    filename_to_write: str
-        The name of the file that we will write the results to
-    what_is_this : str
-        The name of the y-axis
-    """
-
-    for n_comp in n_comps: # AE
-        plt.figure()
-        for package in pkgs:
-            lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-            n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
-            if n_comp != n_hidden:
-                continue
-            
-            dbg_of_current_pkgs = np.load(package)
-
-            cur_label = 'n_comp=%i' % n_hidden
-            cur_label += '/'
-            cur_label += 'lambda=%.2f' % lambda_param
-            cur_label += '/'
-            if not '_AE' in package:
-                cur_label += 'LR only!'
-            elif 'subRS' in package:
-                cur_label += 'RSnormal'
-            elif 'pca20RS' in package:
-                cur_label += 'RSpca20'
-            cur_label += '/'
-            cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-            # Modified by @Gabighz
-            # Commented out lines below
-            #plt.plot(
-                #dbg_epochs_,
-                #dbg_of_current_pkgs,
-                #label=cur_label)
-            plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
-            plt.legend(loc='lower right', fontsize=9)
-            plt.yticks(np.linspace(0., 1., 11))
-            plt.ylabel(what_is_this)
-            plt.ylim(0., 1.05)
-            plt.xlabel('epochs')
-            plt.grid(True)
-            plt.show()
-            plt.savefig(op.join(WRITE_DIR, filename_to_write % n_comp))
-
-def plot_values_with_lambda(pkgs, filename_to_write, what_is_this, array_position_dbg, target_lambda):
-
-    """
-    Added by @Gabighz
-
-    Function that plots values from dbg, but with a target lambda
-    NOTE: see what exactly is dbg
-
-    Parameters
-    ----------
-    pkgs : 
-        Packages that contain ??
-    filename_to_write: str
-        The name of the file that we will write the results to
-    what_is_this : str
-        The name of the y-axis
-    array_position_dbg: int
-        The column of an array that contains ??
-    target_lambda: int
-        The balance between autoencoder and logistic regression
-    """
-    # We always have n_components = [20] since that achieves best performance
-    # but we can also have n = 5, 100 for the purpose of replicating the results
-    for n_comp in n_comps:
-        plt.figure()
-        for package in pkgs:
-            lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
-            n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
-            if n_comp != n_hidden:
-                continue
-            
-            dbg_prfs_ = np.load(package)
-
-            cur_label = 'n_comp=%i' % n_hidden
-            cur_label += '/'
-            cur_label += 'lambda=%.2f' % lambda_param
-            cur_label += '/'
-            if not '_AE' in package:
-                cur_label += 'LR only!'
-            elif 'subRS' in package:
-                cur_label += 'RSnormal'
-            elif 'pca20RS' in package:
-                cur_label += 'RSpca20'
-            cur_label += '/'
-            cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
-        # @Gabighz - commented out the lines below
-        #  for i in np.arange(18):
-            #     plt.plot(
-            #         dbg_epochs_,
-            #         np.array(dbg_prfs_)[:, array_position,dbg, i],
-        #         label='task %i' % (i + 1))
-        plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
-                target_lambda)
-        plt.legend(loc='lower right', fontsize=9)
-        # plt.yticks(np.linspace(0., 1., 11))
-        plt.ylabel(what_is_this)
-        plt.ylim(0., 1.05)
-        plt.xlabel('epochs')
-        plt.grid(True)
-        plt.show()
-        plt.savefig(op.join(WRITE_DIR, filename_to_write + '_lambda=%0.2f_%icomps.png' %
-                    (target_lambda, n_comp)))
-
+# n_comps = [5, 20, 50, 100]
 n_comps = [20]
-# n_comps = [40, 30, 20, 10, 5]
 for n_comp in n_comps:
     # for lambda_param in [0]:
     for lambda_param in [0.50]:
@@ -719,21 +606,18 @@ for key, value in data.items():
             cur_label += '/'
             cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
             cur_label += '' if '_AE' in package else '/LR only!'
-            # @ Modified by @Gabighz
-            # Commented out the lines below
-            #plt.plot(
-            #    dbg_epochs_,
-            #    dbg_acc_train_,
-            #    label=cur_label)
+            plt.plot(
+                dbg_epochs_,
+                dbg_acc_train_,
+                label=cur_label)
         if key == 'training accuracy' or key == 'accuracy val':
             van_pkgs = glob.glob(path_vanilla + value)
-            # Modified by @Gabighz
-            # Commented the lines below until I can figure out what they do
-            #vanilla_values = np.load(van_pkgs[0])
-            #plt.plot(
-            #   dbg_epochs_,
-            #   vanilla_values,
-            #   label='LR')
+
+            vanilla_values = np.load(van_pkgs[0])
+            plt.plot(
+               dbg_epochs_,
+               vanilla_values,
+               label='LR')
         plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
         plt.legend(loc='lower right', fontsize=9)
         plt.yticks(np.linspace(0., 1., 11))
@@ -746,45 +630,444 @@ for key, value in data.items():
                     key.replace(' ', '_') + '_%icomps.png' % n_comp))
 
 pkgs = glob.glob(RES_NAME + '/*dbg_acc_val_*.npy')
-plot_values(pkgs, 'accuracy_val_%icomps.png', 'validation set accuracy')
+for n_comp in n_comps:  # 
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        # n_hidden = int(re.search('comp=(?P<comp>.{1,2,3})_', package).group('comp'))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
+        if n_comp != n_hidden:
+            continue
+        
+        dbg_acc_val_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        plt.plot(
+            dbg_epochs_,
+            dbg_acc_val_,
+            label=cur_label)
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
+    plt.legend(loc='lower right', fontsize=9)
+    plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('validation set accuracy')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'accuracy_val_%icomps.png' % n_comp))
 
 pkgs = glob.glob(RES_NAME + '/*dbg_acc_other_ds_*.npy')
-plot_values(pkgs, 'accuracy_archi_%icomps.png', 'ARCHI dataset accuracy')
+for n_comp in n_comps:  # 
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
+        if n_comp != n_hidden:
+            continue
+        
+        dbg_acc_other_ds_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        plt.plot(
+            dbg_epochs_,
+            dbg_acc_other_ds_,
+            label=cur_label)
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
+    plt.legend(loc='lower right', fontsize=9)
+    plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('ARCHI dataset accuracy')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'accuracy_archi_%icomps.png' % n_comp))
 
 pkgs = glob.glob(RES_NAME + '/*dbg_ae_cost_*.npy')
-plot_values(pkgs, 'loss_ae_%icomps.png', 'AE loss')
+for n_comp in n_comps:  # AE
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
+        if n_comp != n_hidden:
+            continue
+        
+        dbg_ae_cost_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+        plt.plot(
+            dbg_epochs_,
+            dbg_ae_cost_,
+            label=cur_label)
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('AE loss')
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'loss_ae_%icomps.png' % n_comp))
 
 pkgs = glob.glob(RES_NAME + '/*dbg_lr_cost_*.npy')  # LR cost
-plot_values(pkgs, 'loss_lr_%icomps.png', 'LR loss')
+for n_comp in n_comps:  # AE
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
+        if n_comp != n_hidden:
+            continue
+        
+        dbg_lr_cost_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+        plt.plot(
+            dbg_epochs_,
+            dbg_lr_cost_,
+            label=cur_label)
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('LR loss')
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'loss_lr_%icomps.png' % n_comp))
 
 pkgs = glob.glob(RES_NAME + '/*dbg_combined_cost_*.npy')  # combined loss
-plot_values(pkgs, 'loss_combined_%icomps.png', 'combined loss')
+for n_comp in n_comps:  # AE
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(.{1,3})_', package).group(1))
+        if n_comp != n_hidden:
+            continue
+        
+        dbg_combined_cost_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+        plt.plot(
+            dbg_epochs_,
+            dbg_combined_cost_,
+            label=cur_label)
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss')
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('combined loss')
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'loss_combined_%icomps.png' % n_comp))
 
 # precision / recall / f1
 target_lambda = 0.5
 
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
-plot_values_with_lambda(pkgs, 'prec_ind', 'in-dataset precisions', 0, target_lambda)
+for n_comp in n_comps:
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
+        if n_comp != n_hidden:
+            continue
+        
+        dbg_prfs_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        for i in np.arange(18):
+             plt.plot(
+                 dbg_epochs_,
+                 np.array(dbg_prfs_)[:, 0, i],
+                 label='task %i' % (i + 1))
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
+              target_lambda)
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('in-dataset precisions')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'prec_inds_lambda=%0.2f_%icomps.png' %
+                (target_lambda, n_comp)))
 
 # in-dataset recall at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
-plot_values_with_lambda(pkgs, 'rec_ind', 'in-dataset recall', 1, target_lambda)
+for n_comp in n_comps:
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
+        if n_comp != n_hidden:
+            continue
+        
+        dbg_prfs_ = np.load(package)
+        
+        dbg_prfs_ = np.load(package)
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        for i in np.arange(18):
+            plt.plot(
+                dbg_epochs_,
+                np.array(dbg_prfs_)[:, 1, i],
+                label='task %i' % (i + 1))
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
+              target_lambda)
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('in-dataset recall')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'rec_inds_lambda=%0.2f_%icomps.png' %
+                (target_lambda, n_comp)))
 
 # in-dataset f1 at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_.npy' % target_lambda)
-plot_values_with_lambda(pkgs, 'f1_ind', 'in-dataset f1 score', 2, target_lambda)
+for n_comp in n_comps:
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
+        if n_comp != n_hidden:
+            continue
+            
+        dbg_prfs_ = np.load(package)
+            
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        for i in np.arange(18):
+            plt.plot(
+                dbg_epochs_,
+                np.array(dbg_prfs_)[:, 2, i],
+                label='task %i' % (i + 1))
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
+              target_lambda)
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('in-dataset f1 score')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'f1_inds_lambda=%0.2f_%icomps.png' %
+                (target_lambda, n_comp)))
 
 # out-of-dataset precision at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
-plot_values_with_lambda(pkgs, 'prec_oods', 'out-of-dataset precisions', 0, target_lambda)
+for n_comp in n_comps:
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
+        if n_comp != n_hidden:
+            continue
+            
+        dbg_prfs_other_ds_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        for i in np.arange(18):
+            plt.plot(
+                dbg_epochs_,
+                np.array(dbg_prfs_other_ds_)[:, 0, i],
+                label='task %i' % (i + 1))
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
+              target_lambda)
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('out-of-dataset precisions')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'prec_oods_lambda=%0.2f_%icomps.png' %
+                (target_lambda, n_comp)))
 
 # out-of-dataset recall at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
-plot_values_with_lambda(pkgs, 'rec_oods', 'out-of-dataset recall', 1, target_lambda)
+for n_comp in n_comps:
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
+        if n_comp != n_hidden:
+            continue
+            
+        dbg_prfs_other_ds_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        for i in np.arange(18):
+            plt.plot(
+                dbg_epochs_,
+                np.array(dbg_prfs_other_ds_)[:, 1, i],
+                label='task %i' % (i + 1))
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
+              target_lambda)
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('out-of-dataset recall')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'rec_oods_lambda=%0.2f_%icomps.png' %
+                (target_lambda, n_comp)))
 
 # out-of-dataset f1 at lambda=0.5
 pkgs = glob.glob(RES_NAME + '/*lambda=%.2f*dbg_prfs_other_ds_.npy' % target_lambda)
-plot_values_with_lambda(pkgs, 'f1_oods', 'out-of-dataset f1 score', 2, target_lambda)
+for n_comp in n_comps:
+    plt.figure()
+    for package in pkgs:
+        lambda_param = np.float(re.search('lambda=(.{4})', package).group(1))
+        n_hidden = int(re.search('comp=(?P<comp>.{1,3})_', package).group('comp'))
+        if n_comp != n_hidden:
+            continue
+            
+        dbg_prfs_other_ds_ = np.load(package)
+
+        cur_label = 'n_comp=%i' % n_hidden
+        cur_label += '/'
+        cur_label += 'lambda=%.2f' % lambda_param
+        cur_label += '/'
+        if not '_AE' in package:
+            cur_label += 'LR only!'
+        elif 'subRS' in package:
+            cur_label += 'RSnormal'
+        elif 'pca20RS' in package:
+            cur_label += 'RSpca20'
+        cur_label += '/'
+        cur_label += 'separate decomp.' if 'decomp_separate' in package else 'joint decomp.'
+
+        for i in np.arange(18):
+            plt.plot(
+                dbg_epochs_,
+                np.array(dbg_prfs_other_ds_)[:, 2, i],
+                label='task %i' % (i + 1))
+    plt.title('Low-rank LR+AE L1=0.1 L2=0.1 res=3mm combined-loss lambda=%.2f' %
+              target_lambda)
+    plt.legend(loc='lower right', fontsize=9)
+    # plt.yticks(np.linspace(0., 1., 11))
+    plt.ylabel('out-of-dataset f1 score')
+    plt.ylim(0., 1.05)
+    plt.xlabel('epochs')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(op.join(WRITE_DIR, 'f1_oods_lambda=%0.2f_%icomps.png' %
+                (target_lambda, n_comp)))
 
 # print network components (1st layer)
 from nilearn.image import smooth_img
@@ -812,11 +1095,8 @@ for package in pkgs:
         continue
     print(package)
     
-    # @Gabighz
-    # NOTE: variable was previously named 'q'
-    # assumed to represent a queue
-    queue = package.replace('W0', 'V1')
-    comps = np.dot(np.load(queue), np.load(package))
+    q = package.replace('W0', 'V1')
+    comps = np.dot(np.load(q), np.load(package))
         
     new_fname = 'comps_n=%i_lambda=%.2f' % (n_hidden, lambda_param)
     dump_comps(nifti_masker, new_fname, comps, threshold=0.0, fwhm=None,
@@ -870,13 +1150,13 @@ for n_comp in [20, 50, 100]:
         pkgs = glob.glob(RES_NAME + '/*n_comp=%i*lambda=%.2f*dbg_prfs_other_ds_.npy' %
             (n_comp, target_lambda))
         print(pkgs)
-       # @Gabighz - commented out
-       # dbg_prfs_other_ds_ = np.load(pkgs[0])
-       # cur_mean = np.mean(dbg_prfs_other_ds_[-1, 2, :])
-       # f1_mean_per_lambda.append(cur_mean)
-       # cur_std = np.std(dbg_prfs_other_ds_[-1, 2, :])
-       # f1_std_per_lambda.append(cur_std)
-       # print('F1 means: %.2f +/- %.2f (SD)' % (cur_mean, cur_std))
+
+        dbg_prfs_other_ds_ = np.load(pkgs[0])
+        cur_mean = np.mean(dbg_prfs_other_ds_[-1, 2, :])
+        f1_mean_per_lambda.append(cur_mean)
+        cur_std = np.std(dbg_prfs_other_ds_[-1, 2, :])
+        f1_std_per_lambda.append(cur_std)
+        print('F1 means: %.2f +/- %.2f (SD)' % (cur_mean, cur_std))
 
     f1_mean_per_lambda = np.array(f1_mean_per_lambda)
     f1_std_per_lambda = np.array(f1_std_per_lambda)
@@ -888,9 +1168,9 @@ for n_comp in [20, 50, 100]:
         #(7., 136., 217.), (7., 40., 164.), (1., 4., 64.)]
         (7., 176., 242.), (7., 136., 217.), (7., 40., 164.), (1., 4., 64.)]
     my_colors = [(x/256, y/256, z/256) for x, y, z in colors]
-   # @Gabighz - commented out
-   # plt.bar(ind, f1_mean_per_lambda, yerr=f1_std_per_lambda,
-   #         width=width, color=my_colors)
+
+    plt.bar(ind, f1_mean_per_lambda, yerr=f1_std_per_lambda,
+            width=width, color=my_colors)
     plt.ylabel('mean F1 score (+/- SD)')
     plt.title('out-of-dataset performance\n'
               '%i components' % n_comp)

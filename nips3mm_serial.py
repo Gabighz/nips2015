@@ -451,96 +451,95 @@ for n_comp in n_comps:
     print('#components: %i' % n_comp)
     
     # 2-step approach 1: ICA + LR
-    # print('Compressing...')
-    # from sklearn.decomposition import FastICA
-    # compressor = FastICA(n_components=n_comp, whiten=True)
-    # compressor.fit(X_dev)
-    # half2compr = compressor.transform(X_val)
-    # 
-    # print('Classifiying...')
-    # l1 = 0.1
-    # l2 = 0.1
-    # my_title = r'LR: L1=%.1f L2=%.1f res=3mm' % (
-    #     l1, l2
-    # )
-    # print(my_title)
-    # estimator = SEncoder(
-    #     gain1=0.004,  # empirically determined by CV
-    #     learning_rate = np.float32(0.00001),  # empirically determined by CV,
-    #     max_epochs=500, l1=l1, l2=l2)
-    # 
-    # estimator.fit(half2compr, y_val)
-    # 
-    # acc_ICA = estimator.dbg_acc_val_
-    # print(acc_ICA)
-    # print('ICA: %.4f' % acc_ICA[-1])
-    # 
-    # outpath = op.join(WRITE_DIR, 'ICA-LR_ncomp=%i' % n_comp)
-    # np.save(outpath + '_acc', acc_ICA)
-    # joblib.dump(estimator, outpath + '_est', compress=9)
+    """ print('Compressing...')
+    from sklearn.decomposition import FastICA
+    compressor = FastICA(n_components=n_comp, whiten=True)
+    compressor.fit(X_dev)
+    half2compr = compressor.transform(X_val)
+     
+    print('Classifiying...')
+    l1 = 0.1
+    l2 = 0.1
+    my_title = r'LR: L1=%.1f L2=%.1f res=3mm' % (
+        l1, l2
+    )
+    print(my_title)
+    estimator = SEncoder(
+        gain1=0.004,  # empirically determined by CV
+        learning_rate = np.float32(0.00001),  # empirically determined by CV,
+        max_epochs=500, l1=l1, l2=l2)
+
+    estimator.fit(half2compr, y_val)
+     
+    acc_ICA = estimator.dbg_acc_val_
+    print(acc_ICA)
+    print('ICA: %.4f' % acc_ICA[-1])
+     
+    outpath = op.join(WRITE_DIR, 'ICA-LR_ncomp=%i' % n_comp)
+    np.save(outpath + '_acc', acc_ICA)
+    joblib.dump(estimator, outpath + '_est', compress=9) """
 
     # 2-step approach: SPCA + LR
-    # print('Compressing...')
-    # from sklearn.decomposition import SparsePCA
-    # compressor = SparsePCA(n_components=n_comp, alpha=1.0,  # big sparsity
-    #                        n_jobs=1, verbose=0, tol=0.1)
-    # compressor.fit(X_dev)
-    # half2compr = compressor.transform(X_val)
-    # 
-    # print('Classifiying...')
-    # l1 = 0.1
-    # l2 = 0.1
-    # my_title = r'LR: L1=%.1f L2=%.1f res=3mm' % (
-    #     l1, l2
-    # )
-    # print(my_title)
-    # estimator = SEncoder(
-    #     gain1=0.004,  # empirically determined by CV
-    #     learning_rate = np.float32(0.00001),  # empirically determined by CV,
-    #     max_epochs=500, l1=l1, l2=l2)
-    # 
-    # estimator.fit(half2compr, y_val)
-    # 
-    # acc_SPCA = estimator.dbg_acc_val_
-    # print(acc_SPCA)
-    # print('SPCA: %.4f' % acc_SPCA[-1])
-    # 
-    # outpath = op.join(WRITE_DIR, 'SPCA-LR_ncomp=%i' % n_comp)
-    # np.save(outpath + '_acc', acc_SPCA)
-    # joblib.dump(estimator, outpath + '_est', compress=9)
+    """ print('Compressing...')
+    from sklearn.decomposition import SparsePCA
+    compressor = SparsePCA(n_components=n_comp, alpha=1.0,  # big sparsity
+                            n_jobs=1, verbose=0, tol=0.1)
+    compressor.fit(X_dev)
+    half2compr = compressor.transform(X_val)
+ 
+    print('Classifiying...')
+    l1 = 0.1
+    l2 = 0.1
+    my_title = r'LR: L1=%.1f L2=%.1f res=3mm' % (
+        l1, l2
+    )
+    print(my_title)
+    estimator = SEncoder(
+        gain1=0.004,  # empirically determined by CV
+        learning_rate = np.float32(0.00001),  # empirically determined by CV,
+        max_epochs=500, l1=l1, l2=l2)
+     
+    estimator.fit(half2compr, y_val)
+    
+    acc_SPCA = estimator.dbg_acc_val_
+    print(acc_SPCA)
+    print('SPCA: %.4f' % acc_SPCA[-1])
+     
+    outpath = op.join(WRITE_DIR, 'SPCA-LR_ncomp=%i' % n_comp)
+    np.save(outpath + '_acc', acc_SPCA)
+    joblib.dump(estimator, outpath + '_est', compress=9) """
 
     # 2-step approach 3: AE + LR
-    # print('Compressing by autoencoder...')
-    # compressor = AutoEncoder(
-    #         n_hidden=n_comp,
-    #         gain1=0.004,  # empirically determined by CV
-    #         learning_rate = np.float32(0.00001),  # empirically determined by CV,
-    #         max_epochs=500)
-    # compressor.fit(X_dev)
-    # 
-    # half2compr = compressor.transform(X_val)
-    # 
-    # print('Classifiying...')
-    # l1 = 0.1
-    # l2 = 0.1
-    # my_title = r'LR: L1=%.1f L2=%.1f res=3mm' % (
-    #     l1, l2
-    # )
-    # print(my_title)
-    # estimator = SEncoder(
-    #     gain1=0.004,  # empirically determined by CV
-    #     learning_rate = np.float32(0.00001),  # empirically determined by CV,
-    #     max_epochs=500, l1=l1, l2=l2)
-    # 
-    # estimator.fit(half2compr, y_val)
-    # 
-    # acc_AE = estimator.dbg_acc_val_
-    # print(acc_AE)
-    # print('AE: %.4f' % acc_AE[-1])
-    # 
-    # outpath = op.join(WRITE_DIR, 'AE-LR_ncomp=%i' % n_comp)
-    # np.save(outpath + '_acc', acc_AE)
-    # joblib.dump(estimator, outpath + '_est', compress=9)
+    """ print('Compressing by autoencoder...')
+    compressor = AutoEncoder(
+        n_hidden=n_comp,
+        gain1=0.004,  # empirically determined by CV
+        learning_rate = np.float32(0.00001),  # empirically determined by CV,
+        max_epochs=500)
+    compressor.fit(X_dev)
+    half2compr = compressor.transform(X_val)
+     
+    print('Classifiying...')
+    l1 = 0.1
+    l2 = 0.1
+    my_title = r'LR: L1=%.1f L2=%.1f res=3mm' % (
+        l1, l2
+    )
+    print(my_title)
+    estimator = SEncoder(
+        gain1=0.004,  # empirically determined by CV
+        learning_rate = np.float32(0.00001),  # empirically determined by CV,
+        max_epochs=500, l1=l1, l2=l2)
+     
+    estimator.fit(half2compr, y_val)
+ 
+    acc_AE = estimator.dbg_acc_val_
+    print(acc_AE)
+    print('AE: %.4f' % acc_AE[-1])
+
+    outpath = op.join(WRITE_DIR, 'AE-LR_ncomp=%i' % n_comp)
+    np.save(outpath + '_acc', acc_AE)
+    joblib.dump(estimator, outpath + '_est', compress=9) """
 
     # 2-step approach 4: PCA + LogReg
     from sklearn.decomposition import PCA
